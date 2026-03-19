@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recharge Commission - Device Offline Analysis (Feb-Mar 2026)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  :root {
+    --bg: #FAF9FC; --card: #FFFFFF; --border: #E8E4F0; --text: #161021;
+    --muted: #665E75; --accent: #D9008D; --green: #008043; --red: #E01E00;
+    --amber: #FF8000; --orange: #B85C00; --blue: #6D17CE; --purple: #D9008D;
+    --cyan: #FFB2E4;
+    --brand-gold: #D5AF4A;
+    --positive-100: #E1FAED; --negative-100: #FFE9E5;
+    --warning-200: #FFE6CC; --info-100: #F1E5FF;
+    --neutral-100: #F1EDF7; --neutral-300: #D7D3E0; --neutral-700: #665E75;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg); color: var(--text); line-height:1.6; padding:24px;
+  }
+  .header { text-align:center; padding:32px 0 24px; border-bottom:1px solid var(--border); margin-bottom:32px; }
+  .header h1 {
+    font-size:28px; font-weight:700; margin-bottom:8px;
+    background: linear-gradient(135deg, var(--accent), var(--brand-gold));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .header .subtitle { color:var(--muted); font-size:14px; }
+
+  /* Hero stat boxes */
+  .hero-row {
+    display:grid; grid-template-columns: repeat(2, 1fr); gap:20px; margin-bottom:32px;
+  }
+  .hero {
+    background: var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:32px; text-align:center; position:relative; overflow:hidden;
+    box-shadow: 0 1px 3px rgba(22,16,33,.06);
+  }
+  .hero::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:4px;
+  }
+  .hero.red::before { background: linear-gradient(90deg, var(--red), var(--amber)); }
+  .hero.blue::before { background: linear-gradient(90deg, var(--accent), var(--brand-gold)); }
+  .hero .big { font-size:64px; font-weight:900; line-height:1; }
+  .hero .big.red { color: var(--red); }
+  .hero .big.blue { color: var(--blue); }
+  .hero .label { font-size:18px; font-weight:600; margin-top:8px; }
+  .hero .detail { font-size:14px; color:var(--muted); margin-top:8px; line-height:1.5; }
+  .hero .detail strong { color:var(--text); }
+
+  .kpi-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:12px; margin-bottom:32px; }
+  .kpi {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:16px; text-align:center; box-shadow:0 1px 3px rgba(22,16,33,.06);
+  }
+  .kpi .value { font-size:32px; font-weight:800; line-height:1.1; }
+  .kpi .label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-top:4px; }
+  .kpi.green .value { color:var(--green); }
+  .kpi.red .value { color:var(--red); }
+  .kpi.amber .value { color:var(--amber); }
+  .kpi.blue .value { color:var(--blue); }
+  .kpi.purple .value { color:var(--purple); }
+  .kpi.cyan .value { color:var(--cyan); }
+
+  .section { margin-bottom:36px; }
+  .section h2 {
+    font-size:18px; font-weight:600; margin-bottom:16px; padding-bottom:8px;
+    border-bottom:1px solid var(--border);
+  }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:900px) { .grid-2 { grid-template-columns:1fr; } .hero-row { grid-template-columns:1fr; } }
+  .chart-card {
+    background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px;
+    box-shadow:0 1px 3px rgba(22,16,33,.06);
+  }
+  .chart-card h3 { margin:0 0 12px; font-size:14px; color:var(--text); }
+  canvas { max-height:320px; }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th {
+    background:#F1EDF7; padding:10px 12px; text-align:left; font-weight:600;
+    font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted);
+    position:sticky; top:0; border-bottom:2px solid var(--border); z-index:1;
+  }
+  td { padding:8px 12px; border-bottom:1px solid var(--border); }
+  tr:hover td { background:rgba(217,0,141,.04); }
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+  .badge-red { background:rgba(224,30,0,.15); color:var(--red); }
+  .badge-green { background:rgba(0,128,67,.15); color:var(--green); }
+  .badge-amber { background:rgba(255,128,0,.15); color:var(--amber); }
+  .badge-blue { background:rgba(109,23,206,.15); color:var(--blue); }
+  .badge-gray { background:rgba(167,161,178,.15); color:var(--muted); }
+
+  .callout {
+    background:rgba(224,30,0,.08); border-left:3px solid var(--red);
+    border-radius:0 8px 8px 0; padding:16px 20px; margin:16px 0; font-size:14px;
+  }
+  .callout.info { background:rgba(109,23,206,.08); border-left-color:var(--blue); }
+  .callout strong { color:var(--text); }
+
+  .table-scroll {
+    overflow-x:auto; border-radius:12px; border:1px solid var(--border); background:var(--card);
+  }
+  .footer {
+    text-align:center; color:var(--muted); font-size:12px; padding:24px 0;
+    border-top:1px solid var(--border); margin-top:32px;
+  }
+
+  .week-table td { font-variant-numeric: tabular-nums; }
+  .week-table .highlight { background:rgba(224,30,0,.08); }
+  .bar-bg { background:rgba(167,161,178,.15); border-radius:4px; height:10px; width:100%; position:relative; }
+  .bar-fill { position:absolute; top:0; left:0; height:100%; border-radius:4px; }
+
+  /* Funnel */
+  .funnel { display:flex; gap:0; margin-bottom:32px; align-items:stretch; }
+  .funnel-step {
+    flex:1; padding:28px 20px; text-align:center; position:relative;
+    border:1px solid var(--border); background:var(--card);
+    box-shadow:0 1px 3px rgba(22,16,33,.06);
+  }
+  .funnel-step:first-child { border-radius:12px 0 0 12px; }
+  .funnel-step:last-child { border-radius:0 12px 12px 0; }
+  .funnel-step .step-num { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:8px; }
+  .funnel-step .step-val { font-size:44px; font-weight:900; line-height:1; }
+  .funnel-step .step-label { font-size:13px; font-weight:600; margin-top:6px; color:var(--text); }
+  .funnel-step .step-sub { font-size:11px; color:var(--muted); margin-top:4px; }
+  .funnel-arrow {
+    display:flex; align-items:center; font-size:24px; color:var(--neutral-300);
+    padding:0 2px; user-select:none;
+  }
+  @media (max-width:900px) {
+    .funnel { flex-direction:column; gap:8px; }
+    .funnel-step { border-radius:12px !important; }
+    .funnel-arrow { justify-content:center; transform:rotate(90deg); }
+  }
+
+  .download-bar {
+    display:flex; justify-content:flex-end; margin-bottom:20px; gap:12px;
+  }
+  .btn-download {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:10px 20px; border-radius:8px; font-size:13px; font-weight:600;
+    cursor:pointer; border:1px solid var(--border); background:var(--card);
+    color:var(--accent); text-decoration:none; transition:all .15s;
+    box-shadow:0 1px 3px rgba(22,16,33,.06);
+  }
+  .btn-download:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .btn-download svg { width:16px; height:16px; fill:currentColor; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Recharge Commission Issues - Are Devices Offline?</h1>
+  <div class="subtitle">PTL Kapture Tickets | 20 Feb - 19 Mar 2026 | Kapture + Metabase Ping Data</div>
+</div>
+
+<!-- ==================== DOWNLOAD BAR ==================== -->
+<div class="download-bar">
+  <a class="btn-download" id="downloadCsvBtn" href="#">
+    <svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+    Download Raw Data (CSV)
+  </a>
+</div>
+
+<!-- ==================== THE FUNNEL ==================== -->
+<div class="funnel">
+  <div class="funnel-step">
+    <div class="step-num">Step 1</div>
+    <div class="step-val" style="color:var(--text)">148</div>
+    <div class="step-label">Total Calls Raised</div>
+    <div class="step-sub">Recharge Commission complaints on PTL</div>
+  </div>
+  <div class="funnel-arrow">&#8594;</div>
+  <div class="funnel-step">
+    <div class="step-num">Step 2</div>
+    <div class="step-val" style="color:var(--blue)">113</div>
+    <div class="step-label">Unique Partners Called</div>
+    <div class="step-sub">Distinct partners who raised tickets</div>
+  </div>
+  <div class="funnel-arrow">&#8594;</div>
+  <div class="funnel-step">
+    <div class="step-num">Step 3</div>
+    <div class="step-val" style="color:var(--amber)">68</div>
+    <div class="step-label">Partners Shared Device ID</div>
+    <div class="step-sub">60% of partners &mdash; 45 never shared a device ID</div>
+  </div>
+  <div class="funnel-arrow">&#8594;</div>
+  <div class="funnel-step" style="border-color:var(--red);">
+    <div class="step-num" style="color:var(--red)">Finding</div>
+    <div class="step-val" style="color:var(--red)">29</div>
+    <div class="step-label" style="color:var(--red)">Partners with Device Not Working</div>
+    <div class="step-sub"><strong>43% of partners who shared a device ID</strong> had at least one device with no internet (zero pings at call time)</div>
+  </div>
+</div>
+
+<!-- ==================== SUPPORTING KPIs ==================== -->
+<div class="kpi-row">
+  <div class="kpi" style="border-left:3px solid var(--text)">
+    <div class="value" style="color:var(--text)">148</div>
+    <div class="label">Total Calls</div>
+  </div>
+  <div class="kpi" style="border-left:3px solid var(--amber)">
+    <div class="value" style="color:var(--amber)">85</div>
+    <div class="label">Calls with Device ID</div>
+  </div>
+  <div class="kpi" style="border-left:3px solid var(--red)">
+    <div class="value" style="color:var(--red)">35</div>
+    <div class="label">Device Not Working</div>
+  </div>
+  <div class="kpi" style="border-left:3px solid var(--green)">
+    <div class="value" style="color:var(--green)">50</div>
+    <div class="label">Device Working</div>
+  </div>
+  <div class="kpi" style="border-left:3px solid var(--muted)">
+    <div class="value" style="color:var(--muted)">63</div>
+    <div class="label">No Device ID Shared</div>
+  </div>
+  <div class="kpi" style="border-left:3px solid var(--red)">
+    <div class="value" style="color:var(--red)">41%</div>
+    <div class="label">Internet Down Rate</div>
+  </div>
+</div>
+
+<div class="callout">
+  <strong>What this means:</strong> Of the 68 partners who shared a Device ID, <strong>29 (43%) had customer internet not working</strong> at the time they called about recharge commissions. These 29 partners raised 35 calls where the device had zero connectivity &mdash; the customer&rsquo;s internet was down, so the recharge could not have processed.
+</div>
+
+<!-- ==================== WEEKLY TREND ==================== -->
+<div class="section">
+  <h2>1. Weekly Trend - Calls vs Offline Devices vs Partners Affected</h2>
+  <div class="grid-2">
+    <div class="chart-card">
+      <h3>Calls per Week: Online vs Offline vs No Device</h3>
+      <canvas id="weeklyCallsChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Partners with Offline Devices per Week</h3>
+      <canvas id="weeklyPartnersChart"></canvas>
+    </div>
+  </div>
+
+  <div class="table-scroll" style="margin-top:20px">
+    <table class="week-table">
+      <thead>
+        <tr>
+          <th>Week Starting</th>
+          <th>Total Calls</th>
+          <th>Device Offline</th>
+          <th>Device Online</th>
+          <th>No Device ID</th>
+          <th>Offline %</th>
+          <th>Partners (Total)</th>
+          <th>Partners (Offline)</th>
+          <th>Offline Call Breakdown</th>
+        </tr>
+      </thead>
+      <tbody id="weeklyTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== DAILY TREND ==================== -->
+<div class="section">
+  <h2>2. Daily Trend - Call Volume &amp; Device Status</h2>
+  <div class="chart-card">
+    <h3>Daily Ticket Volume with Device Status</h3>
+    <canvas id="dailyChart" style="max-height:280px"></canvas>
+  </div>
+</div>
+
+<!-- ==================== DEVICE STATUS BREAKDOWN ==================== -->
+<div class="section">
+  <h2>3. Device Status at Time of Complaint Call</h2>
+  <div class="grid-2">
+    <div class="chart-card">
+      <h3>Overall Status (All 148 Tickets)</h3>
+      <canvas id="statusPie"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>The Core Finding</h3>
+      <div style="padding:20px 0">
+        <div style="font-size:48px;font-weight:900;color:var(--red);text-align:center">35 of 148 Calls</div>
+        <div style="font-size:16px;color:var(--muted);text-align:center;margin-top:8px">
+          had <strong style="color:var(--red)">NO device ping</strong> at the time of the complaint
+        </div>
+        <div style="margin-top:24px;padding:16px;background:rgba(239,68,68,.06);border-radius:8px">
+          <div style="font-size:14px;color:var(--muted);line-height:1.8">
+            <strong style="color:var(--text)">29 partners</strong> raised complaints about recharge commissions
+            while their device had <strong style="color:var(--red)">no connectivity</strong>.<br>
+            If the device is offline, recharges cannot be processed &mdash; making a "commission issue" complaint moot.<br><br>
+            This represents <strong style="color:var(--text)">25% of all partners</strong>
+            who raised recharge commission tickets.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== CUSTOMER AT RISK ==================== -->
+<div class="section">
+  <h2>4. Customer Impact — How Many Customers Are at Risk?</h2>
+
+  <div class="funnel" style="margin-bottom:20px">
+    <div class="funnel-step">
+      <div class="step-num">Platform</div>
+      <div class="step-val" style="color:var(--text)">1,30,428</div>
+      <div class="step-label">Total Active Customers</div>
+      <div class="step-sub">Across 1,204 active partners</div>
+    </div>
+    <div class="funnel-arrow">&#8594;</div>
+    <div class="funnel-step">
+      <div class="step-num">Affected Partners</div>
+      <div class="step-val" style="color:var(--amber)">4,111</div>
+      <div class="step-label">Customers Under These 27 Partners</div>
+      <div class="step-sub">Partners where at least one device was not working</div>
+    </div>
+    <div class="funnel-arrow">&#8594;</div>
+    <div class="funnel-step" style="border-color:var(--red);">
+      <div class="step-num" style="color:var(--red)">At Risk</div>
+      <div class="step-val" style="color:var(--red)">3.2%</div>
+      <div class="step-label">of All Customers Potentially Affected</div>
+      <div class="step-sub">4,111 out of 1,30,428 active customers</div>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <strong>How to read this:</strong> The 27 partners who had at least one device offline during their complaint call collectively serve <strong>4,111 active customers</strong>. Not all of these customers are necessarily impacted — but they are <strong>at risk</strong> because their partner's infrastructure has demonstrated connectivity issues. This represents <strong>3.2% of the total platform base</strong>.
+  </div>
+
+  <div class="table-scroll" style="margin-top:16px">
+    <table>
+      <thead>
+        <tr>
+          <th>Partner Name</th>
+          <th>Status</th>
+          <th>Active Customers</th>
+          <th>Segment</th>
+          <th>Total Installs</th>
+          <th>Customer at Risk %</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Nishu Broadband</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">647</td><td>Mega Partner</td><td>1,893</td><td style="color:var(--red);font-weight:600">0.50%</td></tr>
+        <tr><td>Dashmesh Cable And Internet</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">394</td><td>Large Partner</td><td>910</td><td style="color:var(--red);font-weight:600">0.30%</td></tr>
+        <tr><td>TNB Infotech</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">389</td><td>Large Partner</td><td>1,127</td><td style="color:var(--red);font-weight:600">0.30%</td></tr>
+        <tr><td>Softage Internet Services</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">386</td><td>Large Partner</td><td>1,495</td><td style="color:var(--red);font-weight:600">0.30%</td></tr>
+        <tr><td>Wow! Wireless Fiber Internet</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">307</td><td>Large Partner</td><td>1,059</td><td style="color:var(--red);font-weight:600">0.24%</td></tr>
+        <tr><td>GOYLA CABLE NETWORK</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">299</td><td>Large Partner</td><td>1,093</td><td style="color:var(--red);font-weight:600">0.23%</td></tr>
+        <tr><td>Verma Broadband</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">250</td><td>Mid-Size Partner</td><td>562</td><td style="color:var(--amber);font-weight:600">0.19%</td></tr>
+        <tr><td>ANOOP INTERNET</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">221</td><td>Mid-Size Partner</td><td>496</td><td style="color:var(--amber);font-weight:600">0.17%</td></tr>
+        <tr><td>New Shree Balaji Cable TV Network</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">202</td><td>Mid-Size Partner</td><td>547</td><td style="color:var(--amber);font-weight:600">0.15%</td></tr>
+        <tr><td>SUN ENTERPRISES</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">158</td><td>Mid-Size Partner</td><td>355</td><td style="color:var(--amber);font-weight:600">0.12%</td></tr>
+        <tr><td>SHRI BALAJI CABLE TV NETWORK</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">151</td><td>Mid-Size Partner</td><td>334</td><td style="color:var(--amber);font-weight:600">0.12%</td></tr>
+        <tr><td>SS FIBERNET</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">113</td><td>Mid-Size Partner</td><td>347</td><td style="color:var(--muted)">0.09%</td></tr>
+        <tr><td>Ajay Net</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">111</td><td>Mid-Size Partner</td><td>350</td><td style="color:var(--muted)">0.09%</td></tr>
+        <tr><td>VARUN BROADBAND</td><td><span class="badge badge-red">TERMINATION</span></td><td style="font-weight:700">82</td><td>Small Partner</td><td>260</td><td style="color:var(--muted)">0.06%</td></tr>
+        <tr><td>ATM Network</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">81</td><td>Small Partner</td><td>151</td><td style="color:var(--muted)">0.06%</td></tr>
+        <tr><td>Unique Cable Network</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">73</td><td>Small Partner</td><td>430</td><td style="color:var(--muted)">0.06%</td></tr>
+        <tr><td>FIBER LINK</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">63</td><td>Small Partner</td><td>259</td><td style="color:var(--muted)">0.05%</td></tr>
+        <tr><td>DEEPIKA CABLE NETWORK</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">47</td><td>Small Partner</td><td>141</td><td style="color:var(--muted)">0.04%</td></tr>
+        <tr><td>MANISHA TRADERS 1</td><td><span class="badge badge-red">TERMINATION</span></td><td style="font-weight:700">32</td><td>Small Partner</td><td>84</td><td style="color:var(--muted)">0.02%</td></tr>
+        <tr><td>Bhartiye Broadband Service</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">23</td><td>Small Partner</td><td>42</td><td style="color:var(--muted)">0.02%</td></tr>
+        <tr><td>High speed internet - FBD</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">19</td><td>Small Partner</td><td>49</td><td style="color:var(--muted)">0.01%</td></tr>
+        <tr><td>Chaannel Club</td><td><span class="badge badge-amber">SUSPENDED</span></td><td style="font-weight:700">18</td><td>Small Partner</td><td>44</td><td style="color:var(--muted)">0.01%</td></tr>
+        <tr><td>Soni Broadband Services</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">17</td><td>Small Partner</td><td>106</td><td style="color:var(--muted)">0.01%</td></tr>
+        <tr><td>Krishna Broadband and Yadav Cable</td><td><span class="badge badge-red">TERMINATION</span></td><td style="font-weight:700">13</td><td>Small Partner</td><td>128</td><td style="color:var(--muted)">0.01%</td></tr>
+        <tr><td>Rudra Enterprises - Mira Road</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">8</td><td>Small Partner</td><td>32</td><td style="color:var(--muted)">&lt;0.01%</td></tr>
+        <tr><td>Mayekar Broadband</td><td><span class="badge badge-amber">SUSPENDED</span></td><td style="font-weight:700">6</td><td>Small Partner</td><td>36</td><td style="color:var(--muted)">&lt;0.01%</td></tr>
+        <tr><td>Speedcom Enterprises - Miraroad</td><td><span class="badge badge-green">ACTIVE</span></td><td style="font-weight:700">1</td><td>Small Partner</td><td>17</td><td style="color:var(--muted)">&lt;0.01%</td></tr>
+        <tr style="background:var(--neutral-100);font-weight:700">
+          <td>TOTAL</td><td></td><td style="color:var(--red);font-size:16px">4,111</td><td></td><td></td><td style="color:var(--red);font-size:16px">3.15%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== PARTNER TABLE ==================== -->
+<div class="section">
+  <h2>5. Partner-Level Breakdown - Who Is Contributing to Offline Complaints?</h2>
+  <div class="chart-card" style="margin-bottom:20px">
+    <h3>Top Partners by Offline Device Calls</h3>
+    <canvas id="partnerBar" style="max-height:450px"></canvas>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Partner Name</th>
+          <th>Partner ID</th>
+          <th>Total Calls</th>
+          <th>Offline</th>
+          <th>Online</th>
+          <th>No Device</th>
+          <th>Offline %</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="partnerTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== DETAIL TABLE ==================== -->
+<div class="section">
+  <h2>6. Detailed Ticket-Level Data</h2>
+  <div class="table-scroll" style="max-height:600px;overflow-y:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Ticket ID</th><th>Partner</th><th>Call Date</th><th>Time</th>
+          <th>Customer</th><th>Device</th><th>Phone</th><th>Ping@Call</th>
+          <th>Last Ping</th><th>Delta</th><th>24h Pings</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="ticketTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer">
+  Generated 19 Mar 2026 | Sources: Kapture Partner Tickets Report, Kapture CRM API, Hourly Device Ping Influx (Metabase/Snowflake)
+</div>
+
+<script>
+Chart.register(ChartDataLabels);
+const defaultDatalabels = { display: false };
+
+// Data
+const weekly = [{"week": "16 Feb", "total_calls": 21, "offline": 4, "online": 5, "no_device": 12, "partners_total": 17, "partners_offline": 3}, {"week": "23 Feb", "total_calls": 40, "offline": 5, "online": 16, "no_device": 19, "partners_total": 30, "partners_offline": 5}, {"week": "02 Mar", "total_calls": 43, "offline": 10, "online": 12, "no_device": 21, "partners_total": 37, "partners_offline": 8}, {"week": "09 Mar", "total_calls": 26, "offline": 8, "online": 11, "no_device": 7, "partners_total": 23, "partners_offline": 8}, {"week": "16 Mar", "total_calls": 18, "offline": 8, "online": 6, "no_device": 4, "partners_total": 17, "partners_offline": 7}];
+const daily = [{"date": "20/02/2026", "total": 4, "offline": 0, "online": 1, "no_device": 3, "partners_total": 3, "partners_offline": 0}, {"date": "22/02/2026", "total": 17, "offline": 4, "online": 4, "no_device": 9, "partners_total": 14, "partners_offline": 3}, {"date": "23/02/2026", "total": 3, "offline": 1, "online": 1, "no_device": 1, "partners_total": 3, "partners_offline": 1}, {"date": "24/02/2026", "total": 8, "offline": 0, "online": 6, "no_device": 2, "partners_total": 8, "partners_offline": 0}, {"date": "25/02/2026", "total": 4, "offline": 0, "online": 1, "no_device": 3, "partners_total": 3, "partners_offline": 0}, {"date": "26/02/2026", "total": 7, "offline": 2, "online": 2, "no_device": 3, "partners_total": 5, "partners_offline": 2}, {"date": "27/02/2026", "total": 3, "offline": 0, "online": 1, "no_device": 2, "partners_total": 3, "partners_offline": 0}, {"date": "28/02/2026", "total": 4, "offline": 0, "online": 2, "no_device": 2, "partners_total": 4, "partners_offline": 0}, {"date": "01/03/2026", "total": 11, "offline": 2, "online": 3, "no_device": 6, "partners_total": 8, "partners_offline": 2}, {"date": "02/03/2026", "total": 9, "offline": 2, "online": 4, "no_device": 3, "partners_total": 8, "partners_offline": 2}, {"date": "03/03/2026", "total": 5, "offline": 2, "online": 1, "no_device": 2, "partners_total": 4, "partners_offline": 1}, {"date": "04/03/2026", "total": 2, "offline": 0, "online": 1, "no_device": 1, "partners_total": 2, "partners_offline": 0}, {"date": "05/03/2026", "total": 5, "offline": 1, "online": 1, "no_device": 3, "partners_total": 5, "partners_offline": 1}, {"date": "06/03/2026", "total": 5, "offline": 2, "online": 2, "no_device": 1, "partners_total": 5, "partners_offline": 2}, {"date": "07/03/2026", "total": 8, "offline": 0, "online": 3, "no_device": 5, "partners_total": 6, "partners_offline": 0}, {"date": "08/03/2026", "total": 9, "offline": 3, "online": 0, "no_device": 6, "partners_total": 9, "partners_offline": 3}, {"date": "09/03/2026", "total": 3, "offline": 2, "online": 1, "no_device": 0, "partners_total": 3, "partners_offline": 2}, {"date": "10/03/2026", "total": 3, "offline": 1, "online": 1, "no_device": 1, "partners_total": 3, "partners_offline": 1}, {"date": "11/03/2026", "total": 4, "offline": 1, "online": 2, "no_device": 1, "partners_total": 4, "partners_offline": 1}, {"date": "12/03/2026", "total": 5, "offline": 1, "online": 3, "no_device": 1, "partners_total": 5, "partners_offline": 1}, {"date": "13/03/2026", "total": 5, "offline": 0, "online": 3, "no_device": 2, "partners_total": 5, "partners_offline": 0}, {"date": "14/03/2026", "total": 1, "offline": 0, "online": 0, "no_device": 1, "partners_total": 1, "partners_offline": 0}, {"date": "15/03/2026", "total": 5, "offline": 3, "online": 1, "no_device": 1, "partners_total": 4, "partners_offline": 3}, {"date": "16/03/2026", "total": 3, "offline": 2, "online": 1, "no_device": 0, "partners_total": 3, "partners_offline": 2}, {"date": "17/03/2026", "total": 6, "offline": 4, "online": 2, "no_device": 0, "partners_total": 5, "partners_offline": 3}, {"date": "18/03/2026", "total": 9, "offline": 2, "online": 3, "no_device": 4, "partners_total": 9, "partners_offline": 2}];
+const partners = [{"name": "Bhartiye Broadband Service", "pid": "281749855023768", "total": 4, "offline": 3, "online": 1, "no_device": 0}, {"name": "New Shree Balaji Cable TV Network", "pid": "281749854629542", "total": 4, "offline": 2, "online": 0, "no_device": 2}, {"name": "vikas", "pid": "281749854733695", "total": 2, "offline": 2, "online": 0, "no_device": 0}, {"name": "ANOOP INTERNET", "pid": "281749854671115", "total": 3, "offline": 2, "online": 1, "no_device": 0}, {"name": "VARUN BROADBAND", "pid": "281749854688566", "total": 2, "offline": 2, "online": 0, "no_device": 0}, {"name": "GOYLA CABLE NETWORK", "pid": "281749854696768", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "High speed internet - FBD", "pid": "281749854677689", "total": 4, "offline": 1, "online": 0, "no_device": 3}, {"name": "Govind", "pid": "274877909399", "total": 2, "offline": 1, "online": 0, "no_device": 1}, {"name": "FIBER LINK", "pid": "281749854809785", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "Deepak", "pid": "281749854645614", "total": 2, "offline": 1, "online": 1, "no_device": 0}, {"name": "SUN ENTERPRISES", "pid": "281749854653776", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "Vikas Kumar", "pid": "274877918547", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "", "pid": "", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "Unique Cable Network", "pid": "274877934138", "total": 3, "offline": 1, "online": 1, "no_device": 1}, {"name": "ss fiber", "pid": "281749854641066", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "kunal", "pid": "281749854657354", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "Ajay", "pid": "281749854729928", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "prem", "pid": "281749854673254", "total": 2, "offline": 1, "online": 1, "no_device": 0}, {"name": "Wow! Wireless Fiber Internet", "pid": "274877916237", "total": 2, "offline": 1, "online": 1, "no_device": 0}, {"name": "MANISHA TRADERS 1", "pid": "281749854765151", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "Krishna Broadband and Yadav Cable Network", "pid": "281749854660889", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "Dashmesh Cable And Internet", "pid": "281749854671527", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "9319667682", "pid": "", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "TNB Infotech", "pid": "281749854622584", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "Speedcom Enterprises - Miraroad", "pid": "281749854661311", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "ATM Network", "pid": "281749854699276", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "Chaannel Club", "pid": "281749854677840", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "DEEPIKA CABLE NETWORK", "pid": "281749854709079", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "Soni Broadband Services", "pid": "281749854787719", "total": 1, "offline": 1, "online": 0, "no_device": 0}, {"name": "Hash Matrix Solutions", "pid": "281749854697491", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "DHANIRAM ", "pid": "281749854737893", "total": 2, "offline": 0, "online": 1, "no_device": 1}, {"name": "Balaji Internet Ghaziabad-2", "pid": "281749854658145", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Shariq", "pid": "281749854808078", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "ashwani", "pid": "281749855002855", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "shivani", "pid": "281749854656274", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "ajay", "pid": "281749854688901", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "kamil", "pid": "281749854773472", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "8791666667", "pid": "", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "KARAN KUMAR DASS", "pid": "281749854666638", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "kanti", "pid": "281749854632265", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Danish", "pid": "281749854688608", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "annu saxena ", "pid": "281749854787023", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Digital Net Broadband", "pid": "281749854744805", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "SANJEEV", "pid": "281749854820305", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Subash", "pid": "274877931931", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "BINOD", "pid": "274877909960", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Krishav Broadband", "pid": "281749854623252", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "sushil bhalerao", "pid": "281749854659374", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "KARAN", "pid": "281749854653857", "total": 2, "offline": 0, "online": 1, "no_device": 1}, {"name": "Mayank Mishar", "pid": "281749854642571", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "RK CABLE", "pid": "274877928231", "total": 3, "offline": 0, "online": 3, "no_device": 0}, {"name": "Anuj", "pid": "274877944387", "total": 3, "offline": 0, "online": 1, "no_device": 2}, {"name": "sohail ansari", "pid": "281749854673359", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Sharma Cable", "pid": "281749854819418", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "8383829720", "pid": "", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Unique Infotech", "pid": "274877935785", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Tarun Yadav", "pid": "281749854697492", "total": 2, "offline": 0, "online": 2, "no_device": 0}, {"name": "Dinesh", "pid": "281749854752608", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Digital network service", "pid": "281749854889313", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "rahul", "pid": "281749854632219", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Perfect Digital Network", "pid": "281749854691973", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Broadband Solution", "pid": "281749854677690", "total": 2, "offline": 0, "online": 1, "no_device": 1}, {"name": "Nanu", "pid": "281749854696151", "total": 2, "offline": 0, "online": 0, "no_device": 2}, {"name": "Shashikant ", "pid": "281749854780089", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Abhishek kumar", "pid": "281749854770942", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Vishal Panchal", "pid": "281749854674987", "total": 3, "offline": 0, "online": 1, "no_device": 2}, {"name": "Sai Infonet", "pid": "281749854744738", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "guruinfotech", "pid": "281749854729435", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Jatin Cable Net & Broadband", "pid": "281749854623645", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Sonu", "pid": "274877949680", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "SUDERSHAN TANWAR ", "pid": "281749854619146", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Jai Ambe Cable Network", "pid": "281749854696929", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Krishan Gupta ", "pid": "281749854744724", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "MAHI BROADBAND", "pid": "281749855028798", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Dhruv", "pid": "281749854767164", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "WE NET SERVICES", "pid": "281749854661978", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "TREAD STONE ENTERPRISES", "pid": "281749854643296", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "SWASTIK CABLE NETWORK", "pid": "281749854767775", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "kapil", "pid": "274877928228", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Royal Broadband Services Rohini", "pid": "281749854677033", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "NettCloud", "pid": "274877931333", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Elife internet", "pid": "281749854671706", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "taniah", "pid": "281749854635281", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "PLUS ULTRA WIFI", "pid": "281749855015771", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "EDN Broadband services", "pid": "281749854796219", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "INSPIRE INFRATECH PRIVATE LIMITED", "pid": "281749854729403", "total": 2, "offline": 0, "online": 2, "no_device": 0}, {"name": "Down To Earth Fiber Net", "pid": "281749854767160", "total": 3, "offline": 0, "online": 0, "no_device": 3}, {"name": "SSK GLOBAL", "pid": "281749854731739", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "amit", "pid": "281749854623367", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "XPRESS NET SOLUTION-TILAK NAGAR", "pid": "281749854667213", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "BALA JI DIGITAL CABLE NETWORK", "pid": "281749854696260", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Pramod Cable Network", "pid": "281749854809464", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "SKY DIGITAL SERVICE", "pid": "281749854709709", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Manglam Digital Network", "pid": "281749854618576", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Raju", "pid": "281749854653050", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Arora Internet Service ", "pid": "281749854826081", "total": 3, "offline": 0, "online": 2, "no_device": 1}, {"name": "Akash", "pid": "281749854796024", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Vicky Cable Network", "pid": "274877915267", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Batta Cable", "pid": "281749854812286", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "shweta", "pid": "281749854756891", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "R K Cable Network", "pid": "281749854698041", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Saipuja Internet Service (Kurla West)", "pid": "281749854637887", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "R R Enterprises", "pid": "281749854767163", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Anitel", "pid": "274877929231", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Virender Singh", "pid": "281749854787244", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Maa Vasnavi internet Services", "pid": "281749854790292", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Hitech Broadband Network-East", "pid": "281749854625361", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "Rashmi Singh Chowhan", "pid": "281749854807333", "total": 1, "offline": 0, "online": 1, "no_device": 0}, {"name": "varun", "pid": "281749854637030", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "S.R Technologies", "pid": "281749854634984", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Shagun Cable TV & Broadband", "pid": "281749854618551", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Montu", "pid": "281749854643268", "total": 1, "offline": 0, "online": 0, "no_device": 1}, {"name": "Anaya Broadband", "pid": "281749854665050", "total": 1, "offline": 0, "online": 1, "no_device": 0}];
+const tickets = [{"t": "771590925293", "p": "Hash Matrix Solutions", "pid": "281749854697491", "d": "20/02/2026", "tm": "18:05:25", "c": "Harish", "dev": "", "ph": "7017421152", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771601179645", "p": "DHANIRAM ", "pid": "281749854737893", "d": "20/02/2026", "tm": "20:56:20", "c": "Rahul Sharma", "dev": "", "ph": "8384898578", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771598427954", "p": "Balaji Internet Ghaziabad-2", "pid": "281749854658145", "d": "20/02/2026", "tm": "20:10:28", "c": "s p", "dev": "", "ph": "7242536253", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771598587760", "p": "DHANIRAM ", "pid": "281749854737893", "d": "20/02/2026", "tm": "20:13:08", "c": "Rahul Sharma", "dev": "SY090562", "ph": "8384898578", "ping": 11, "lp": "2026-02-20 00:08:27", "delta": "20h 4m 41s", "p24": 26, "s": "healthy"}, {"t": "771748674208", "p": "New Shree Balaji Cable TV Network", "pid": "281749854629542", "d": "22/02/2026", "tm": "13:54:34", "c": "paras saxena", "dev": "", "ph": "8287825201", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771765554668", "p": "GOYLA CABLE NETWORK", "pid": "281749854696768", "d": "22/02/2026", "tm": "18:35:55", "c": "Technician", "dev": "GX25047", "ph": "7017224391", "ping": "", "lp": "", "delta": "", "p24": "", "s": "offline"}, {"t": "771769608162", "p": "Shariq", "pid": "281749854808078", "d": "22/02/2026", "tm": "19:43:28", "c": "Sadiq Shahjamal", "dev": "", "ph": "9027855071", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771740670744", "p": "ashwani", "pid": "281749855002855", "d": "22/02/2026", "tm": "11:41:11", "c": "ashwani", "dev": "", "ph": "8376950966", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771748900534", "p": "New Shree Balaji Cable TV Network", "pid": "281749854629542", "d": "22/02/2026", "tm": "13:58:21", "c": "Vishal ", "dev": "SY103143", "ph": "9625603406", "ping": "", "lp": "", "delta": "", "p24": "", "s": "offline"}, {"t": "771762671206", "p": "shivani", "pid": "281749854656274", "d": "22/02/2026", "tm": "17:47:51", "c": "shivani", "dev": "", "ph": "9315323007", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771747821398", "p": "ajay", "pid": "281749854688901", "d": "22/02/2026", "tm": "13:40:21", "c": "ajay", "dev": "", "ph": "8368816030", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771754074115", "p": "kamil", "pid": "281749854773472", "d": "22/02/2026", "tm": "15:24:34", "c": "Faisal", "dev": "GX89564", "ph": "9837718598", "ping": 9, "lp": "2026-02-22 00:07:10", "delta": "15h 17m 24s", "p24": 63, "s": "degraded"}, {"t": "771757933962", "p": "vikas", "pid": "281749854733695", "d": "22/02/2026", "tm": "16:28:54", "c": "Verma broadband ", "dev": "GX96059", "ph": "9810357231", "ping": 0, "lp": "2026-02-22 00:07:39", "delta": "16h 21m 15s", "p24": 85, "s": "poor"}, {"t": "771757933962", "p": "vikas", "pid": "281749854733695", "d": "22/02/2026", "tm": "16:28:54", "c": "Verma broadband ", "dev": "GX58811", "ph": "9810357231", "ping": "", "lp": "", "delta": "", "p24": "", "s": "offline"}, {"t": "771767014192", "p": "8791666667", "pid": "", "d": "22/02/2026", "tm": "19:00:14", "c": "8791666667", "dev": "GX94675", "ph": "1000000000", "ping": 10, "lp": "2026-02-22 09:47:27", "delta": "9h 12m 47s", "p24": 39, "s": "healthy"}, {"t": "771746483420", "p": "New Shree Balaji Cable TV Network", "pid": "281749854629542", "d": "22/02/2026", "tm": "13:18:03", "c": "Vishal ", "dev": "SY103143", "ph": "9625603406", "ping": "", "lp": "", "delta": "", "p24": "", "s": "offline"}, {"t": "771753177311", "p": "KARAN KUMAR DASS", "pid": "281749854666638", "d": "22/02/2026", "tm": "15:09:37", "c": "NITIN BHATI", "dev": "SY103173", "ph": "9870119714", "ping": 10, "lp": "2026-02-22 00:18:18", "delta": "14h 51m 19s", "p24": 62, "s": "healthy"}, {"t": "771745183875", "p": "kanti", "pid": "281749854632265", "d": "22/02/2026", "tm": "12:56:24", "c": "Sanjay Anand", "dev": "", "ph": "9718682511", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771762496436", "p": "New Shree Balaji Cable TV Network", "pid": "281749854629542", "d": "22/02/2026", "tm": "17:44:56", "c": "Ravinder Kumar", "dev": "", "ph": "9891166825", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771749444273", "p": "Danish", "pid": "281749854688608", "d": "22/02/2026", "tm": "14:07:24", "c": "Danish", "dev": "", "ph": "8588881302", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771745391518", "p": "annu saxena ", "pid": "281749854787023", "d": "22/02/2026", "tm": "12:59:52", "c": "yash", "dev": "", "ph": "9760583524", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771742504888", "p": "Digital Net Broadband", "pid": "281749854744805", "d": "22/02/2026", "tm": "12:11:45", "c": "Digital Net Broadband", "dev": "SY094432", "ph": "7056767635", "ping": 0, "lp": "2026-02-21 23:49:05", "delta": "12h 22m 40s", "p24": 125, "s": "poor"}, {"t": "771853557339", "p": "SANJEEV", "pid": "281749854820305", "d": "23/02/2026", "tm": "19:02:37", "c": "Pradeep Kumar", "dev": "", "ph": "7827746881", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771855162216", "p": "vikas", "pid": "281749854733695", "d": "23/02/2026", "tm": "19:29:22", "c": "Arjun kumar", "dev": "GX96061", "ph": "9289724867", "ping": "", "lp": "2026-02-22 00:00:07", "delta": "43h 29m 15s", "p24": "", "s": "offline"}, {"t": "771830994206", "p": "Subash", "pid": "274877931931", "d": "23/02/2026", "tm": "12:46:34", "c": "mukeshYadav", "dev": "GX46866", "ph": "9711101197", "ping": 0, "lp": "2026-02-23 10:00:15", "delta": "2h 46m 19s", "p24": 61, "s": "poor"}, {"t": "771830994206", "p": "Subash", "pid": "274877931931", "d": "23/02/2026", "tm": "12:46:34", "c": "mukeshYadav", "dev": "SY7086", "ph": "9711101197", "ping": 12, "lp": "2026-02-23 11:56:41", "delta": "0h 49m 53s", "p24": 243, "s": "healthy"}, {"t": "771830994206", "p": "Subash", "pid": "274877931931", "d": "23/02/2026", "tm": "12:46:34", "c": "mukeshYadav", "dev": "99402", "ph": "9711101197", "ping": 11, "lp": "2026-02-23 11:59:29", "delta": "0h 47m 5s", "p24": 218, "s": "healthy"}, {"t": "771942048455", "p": "BINOD", "pid": "274877909960", "d": "24/02/2026", "tm": "19:37:28", "c": "sandesh ", "dev": "GX102316", "ph": "9716857371", "ping": 12, "lp": "2026-02-24 17:57:43", "delta": "1h 39m 45s", "p24": 88, "s": "healthy"}, {"t": "771921356931", "p": "Krishav Broadband", "pid": "281749854623252", "d": "24/02/2026", "tm": "13:52:37", "c": "Sonu Rai", "dev": "126022", "ph": "9810646215", "ping": 0, "lp": "2026-02-24 00:08:25", "delta": "13h 44m 12s", "p24": 98, "s": "poor"}, {"t": "771946858057", "p": "sushil bhalerao", "pid": "281749854659374", "d": "24/02/2026", "tm": "20:57:38", "c": "vandana gawali", "dev": "", "ph": "8108586743", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771923992622", "p": "KARAN", "pid": "281749854653857", "d": "24/02/2026", "tm": "14:36:33", "c": "GHANENDERA", "dev": "GX123287", "ph": "7011085522", "ping": 10, "lp": "2026-02-24 13:57:11", "delta": "0h 39m 22s", "p24": 230, "s": "healthy"}, {"t": "771946278170", "p": "Mayank Mishar", "pid": "281749854642571", "d": "24/02/2026", "tm": "20:47:58", "c": "Mayank Mishar", "dev": "", "ph": "8178443066", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "771912682773", "p": "RK CABLE", "pid": "274877928231", "d": "24/02/2026", "tm": "11:28:03", "c": "tushar", "dev": "48758", "ph": "918076137", "ping": 2, "lp": "2026-02-24 00:04:03", "delta": "11h 24m 0s", "p24": 101, "s": "poor"}, {"t": "771943554596", "p": "Anuj", "pid": "274877944387", "d": "24/02/2026", "tm": "20:02:35", "c": "Krishan Mohan Jha", "dev": "96303", "ph": "8130559916", "ping": 1, "lp": "2026-02-24 20:00:10", "delta": "0h 2m 25s", "p24": 187, "s": "poor"}, {"t": "771917113819", "p": "sohail ansari", "pid": "281749854673359", "d": "24/02/2026", "tm": "12:41:54", "c": "Nasir Shaikh", "dev": "172638", "ph": "9323567965", "ping": 0, "lp": "2026-02-23 14:00:23", "delta": "22h 41m 31s", "p24": 12, "s": "poor"}, {"t": "772002488348", "p": "KARAN", "pid": "281749854653857", "d": "25/02/2026", "tm": "12:24:48", "c": "GHANENDERA", "dev": "", "ph": "7011085522", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772018931021", "p": "Anuj", "pid": "274877944387", "d": "25/02/2026", "tm": "16:58:51", "c": "Krishan Mohan Jha", "dev": "", "ph": "8130559916", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772023598551", "p": "Sharma Cable", "pid": "281749854819418", "d": "25/02/2026", "tm": "18:16:39", "c": "Rahul Sharma", "dev": "GX114358", "ph": "9811825625", "ping": 0, "lp": "2026-02-25 08:16:36", "delta": "10h 0m 3s", "p24": 114, "s": "poor"}, {"t": "772005859213", "p": "Anuj", "pid": "274877944387", "d": "25/02/2026", "tm": "13:20:59", "c": "Krishan Mohan Jha", "dev": "", "ph": "8130559916", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772093212072", "p": "High speed internet - FBD", "pid": "281749854677689", "d": "26/02/2026", "tm": "13:36:52", "c": "Sumanjeet", "dev": "GX46985", "ph": "7210434347", "ping": "", "lp": null, "delta": "", "p24": "", "s": "offline"}, {"t": "772085518886", "p": "8383829720", "pid": "", "d": "26/02/2026", "tm": "11:28:39", "c": "8383829720", "dev": "", "ph": "8383829720", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772093909484", "p": "High speed internet - FBD", "pid": "281749854677689", "d": "26/02/2026", "tm": "13:48:29", "c": "Sumanjeet", "dev": "", "ph": "7210434347", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772114841755", "p": "Unique Infotech", "pid": "274877935785", "d": "26/02/2026", "tm": "19:37:22", "c": "GOVIND", "dev": "95832", "ph": "9654901011", "ping": 0, "lp": "2026-02-26 18:58:34", "delta": "0h 38m 48s", "p24": 96, "s": "poor"}, {"t": "772112379815", "p": "High speed internet - FBD", "pid": "281749854677689", "d": "26/02/2026", "tm": "18:56:20", "c": "Sumanjeet", "dev": "", "ph": "7210434347", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772085302930", "p": "Govind", "pid": "274877909399", "d": "26/02/2026", "tm": "11:25:03", "c": "9716107593", "dev": "60537", "ph": "9716107593", "ping": "", "lp": null, "delta": "", "p24": "", "s": "offline"}, {"t": "772084218397", "p": "RK CABLE", "pid": "274877928231", "d": "26/02/2026", "tm": "11:06:58", "c": "RKCABLE", "dev": "GX73552", "ph": "9250550337", "ping": 0, "lp": "2026-02-25 21:57:00", "delta": "13h 9m 58s", "p24": 41, "s": "poor"}, {"t": "772171038994", "p": "Tarun Yadav", "pid": "281749854697492", "d": "27/02/2026", "tm": "11:13:59", "c": "Megh Raj", "dev": "GX55835", "ph": "8587855252", "ping": 7, "lp": "", "delta": "", "p24": 7, "s": "degraded"}, {"t": "772170567677", "p": "High speed internet - FBD", "pid": "281749854677689", "d": "27/02/2026", "tm": "11:06:08", "c": "Sumanjeet", "dev": "", "ph": "7210434347", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772201929342", "p": "Dinesh", "pid": "281749854752608", "d": "27/02/2026", "tm": "19:48:49", "c": "office", "dev": "", "ph": "9004651444", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772259163535", "p": "Digital network service", "pid": "281749854889313", "d": "28/02/2026", "tm": "11:42:44", "c": "Arvind koundal", "dev": "", "ph": "8010346884", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772290996775", "p": "rahul", "pid": "281749854632219", "d": "28/02/2026", "tm": "20:33:17", "c": "Anil Kumar", "dev": "", "ph": "9027258037", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772258048464", "p": "Perfect Digital Network", "pid": "281749854691973", "d": "28/02/2026", "tm": "11:24:08", "c": "perfect digital network", "dev": "GX99831", "ph": "7290892945", "ping": 0, "lp": "2026-02-27 19:59:24", "delta": "15h 24m 44s", "p24": 78, "s": "poor"}, {"t": "772270855295", "p": "Broadband Solution", "pid": "281749854677690", "d": "28/02/2026", "tm": "14:57:35", "c": "Ashutosh Mishra", "dev": "GX78489", "ph": "9312004211", "ping": 1, "lp": "2026-02-28 14:00:28", "delta": "0h 57m 7s", "p24": 162, "s": "poor"}, {"t": "772352934304", "p": "FIBER LINK", "pid": "281749854809785", "d": "01/03/2026", "tm": "13:45:34", "c": "Saleem", "dev": "GX109166", "ph": "8800782115", "ping": "", "lp": null, "delta": "", "p24": "", "s": "offline"}, {"t": "772351943760", "p": "Nanu", "pid": "281749854696151", "d": "01/03/2026", "tm": "13:29:04", "c": "Naveen k ", "dev": "", "ph": "9911778922", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772355570176", "p": "Nanu", "pid": "281749854696151", "d": "01/03/2026", "tm": "14:29:30", "c": "Naveen k ", "dev": "", "ph": "9911778922", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772369412367", "p": "Shashikant ", "pid": "281749854780089", "d": "01/03/2026", "tm": "18:20:12", "c": "Supriya Shashikant Jadhav", "dev": "", "ph": "9821892177", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772342940956", "p": "Abhishek kumar", "pid": "281749854770942", "d": "01/03/2026", "tm": "10:59:01", "c": "Naman", "dev": "SY079293", "ph": "7457000585", "ping": 11, "lp": "2026-03-01 10:55:00", "delta": "0h 4m 1s", "p24": 226, "s": "healthy"}, {"t": "772351305711", "p": "Vishal Panchal", "pid": "281749854674987", "d": "01/03/2026", "tm": "13:18:26", "c": "Naveen Panchal", "dev": "SY072097", "ph": "7065404060", "ping": 3, "lp": "", "delta": "", "p24": 3, "s": "poor"}, {"t": "772350722243", "p": "Sai Infonet", "pid": "281749854744738", "d": "01/03/2026", "tm": "13:08:42", "c": "sai infonet", "dev": "", "ph": "9067676968", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772360047435", "p": "Deepak", "pid": "281749854645614", "d": "01/03/2026", "tm": "15:44:07", "c": "Ajay Giri", "dev": "GX66197", "ph": "9873114329", "ping": "", "lp": "2026-03-01 00:05:00", "delta": "15h 39m 7s", "p24": 97, "s": "offline"}, {"t": "772361414889", "p": "guruinfotech", "pid": "281749854729435", "d": "01/03/2026", "tm": "16:06:55", "c": "vishal", "dev": "", "ph": "9643828475", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772352629775", "p": "Vishal Panchal", "pid": "281749854674987", "d": "01/03/2026", "tm": "13:40:30", "c": "Naveen Panchal", "dev": "", "ph": "7065404060", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772370049982", "p": "Deepak", "pid": "281749854645614", "d": "01/03/2026", "tm": "18:30:50", "c": "Ajay Giri", "dev": "GX66197", "ph": "9873114329", "ping": 3, "lp": "2026-03-01 00:05:00", "delta": "18h 25m 50s", "p24": 65, "s": "poor"}, {"t": "772451312708", "p": "Jatin Cable Net & Broadband", "pid": "281749854623645", "d": "02/03/2026", "tm": "17:05:13", "c": "umesh kumar", "dev": "SY4415", "ph": "9716151250", "ping": 10, "lp": "2026-03-02 01:00:00", "delta": "16h 5m 13s", "p24": 88, "s": "healthy"}, {"t": "772450053448", "p": "ANOOP INTERNET", "pid": "281749854671115", "d": "02/03/2026", "tm": "16:44:13", "c": "Anoop Owner ", "dev": "SY31027", "ph": "9811736419", "ping": "", "lp": "2026-03-01 23:55:00", "delta": "16h 49m 13s", "p24": 81, "s": "offline"}, {"t": "772441858360", "p": "Sonu", "pid": "274877949680", "d": "02/03/2026", "tm": "14:27:38", "c": "Sonu", "dev": "GX1091", "ph": "8439573939", "ping": 5, "lp": "2026-03-02 00:05:00", "delta": "14h 22m 38s", "p24": 115, "s": "degraded"}, {"t": "772436591632", "p": "SUN ENTERPRISES", "pid": "281749854653776", "d": "02/03/2026", "tm": "12:59:52", "c": "Rohit rab", "dev": "GX164697", "ph": "8700608032", "ping": "", "lp": null, "delta": "", "p24": "", "s": "offline"}, {"t": "772446593407", "p": "SUDERSHAN TANWAR ", "pid": "281749854619146", "d": "02/03/2026", "tm": "15:46:33", "c": "SUDERSHAN TANWAR ", "dev": "GX46990", "ph": "9810156371", "ping": 10, "lp": "2026-03-02 15:45:00", "delta": "0h 1m 33s", "p24": 285, "s": "healthy"}, {"t": "772454199227", "p": "Jai Ambe Cable Network", "pid": "281749854696929", "d": "02/03/2026", "tm": "17:53:19", "c": "Jai Ambe Cable Network", "dev": "", "ph": "9891430350", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772429740581", "p": "ANOOP INTERNET", "pid": "281749854671115", "d": "02/03/2026", "tm": "11:05:41", "c": "Anoop Owner ", "dev": "GX103221", "ph": "9811736419", "ping": 12, "lp": "2026-03-02 10:55:00", "delta": "0h 10m 41s", "p24": 27, "s": "healthy"}, {"t": "772429740581", "p": "ANOOP INTERNET", "pid": "281749854671115", "d": "02/03/2026", "tm": "11:05:41", "c": "Anoop Owner ", "dev": "GX110912", "ph": "9811736419", "ping": 1, "lp": "2026-03-02 00:00:00", "delta": "11h 5m 41s", "p24": 34, "s": "poor"}, {"t": "772432525362", "p": "Krishan Gupta ", "pid": "281749854744724", "d": "02/03/2026", "tm": "11:52:05", "c": "Ravi Sharma", "dev": "", "ph": "7289076897", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772431836702", "p": "MAHI BROADBAND", "pid": "281749855028798", "d": "02/03/2026", "tm": "11:40:37", "c": "Amreen Ishrat", "dev": "", "ph": "9627813813", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772533215925", "p": "Dhruv", "pid": "281749854767164", "d": "03/03/2026", "tm": "15:50:16", "c": "shivam", "dev": "", "ph": "9354031958", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772529732208", "p": "WE NET SERVICES", "pid": "281749854661978", "d": "03/03/2026", "tm": "14:52:12", "c": "BHUWAN KUMAR", "dev": "SY8758", "ph": "8287681104", "ping": 11, "lp": "2026-03-03 13:55:00", "delta": "0h 57m 12s", "p24": 276, "s": "healthy"}, {"t": "772529732208", "p": "WE NET SERVICES", "pid": "281749854661978", "d": "03/03/2026", "tm": "14:52:12", "c": "BHUWAN KUMAR", "dev": "124378", "ph": "8287681104", "ping": 12, "lp": "2026-03-03 13:55:00", "delta": "0h 57m 12s", "p24": 284, "s": "healthy"}, {"t": "772518142360", "p": "TREAD STONE ENTERPRISES", "pid": "281749854643296", "d": "03/03/2026", "tm": "11:39:02", "c": "dilbaag", "dev": "", "ph": "8920356776", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772528318106", "p": "Bhartiye Broadband Service", "pid": "281749855023768", "d": "03/03/2026", "tm": "14:28:38", "c": "wakeel", "dev": "GX94288", "ph": "7290011518", "ping": "", "lp": "2026-03-02 23:55:00", "delta": "14h 33m 38s", "p24": 108, "s": "offline"}, {"t": "772528318106", "p": "Bhartiye Broadband Service", "pid": "281749855023768", "d": "03/03/2026", "tm": "14:28:38", "c": "wakeel", "dev": "GX97493", "ph": "7290011518", "ping": "", "lp": "2026-03-02 23:55:00", "delta": "14h 33m 38s", "p24": 108, "s": "offline"}, {"t": "772531812859", "p": "Bhartiye Broadband Service", "pid": "281749855023768", "d": "03/03/2026", "tm": "15:26:53", "c": "office", "dev": "GX94288", "ph": "7065023392", "ping": "", "lp": "2026-03-02 23:55:00", "delta": "15h 31m 53s", "p24": 96, "s": "offline"}, {"t": "772531812859", "p": "Bhartiye Broadband Service", "pid": "281749855023768", "d": "03/03/2026", "tm": "15:26:53", "c": "office", "dev": "GX97493", "ph": "7065023392", "ping": "", "lp": "2026-03-02 23:55:00", "delta": "15h 31m 53s", "p24": 96, "s": "offline"}, {"t": "772621347921", "p": "Bhartiye Broadband Service", "pid": "281749855023768", "d": "04/03/2026", "tm": "16:19:08", "c": "office", "dev": "GX101786", "ph": "7065023392", "ping": 4, "lp": "2026-03-03 23:55:00", "delta": "16h 24m 8s", "p24": 88, "s": "poor"}, {"t": "772609164517", "p": "SWASTIK CABLE NETWORK", "pid": "281749854767775", "d": "04/03/2026", "tm": "12:56:05", "c": "Rita yadav", "dev": "", "ph": "8793915556", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772692220327", "p": "kapil", "pid": "274877928228", "d": "05/03/2026", "tm": "12:00:20", "c": "anjali", "dev": "", "ph": "9810337472", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772709794837", "p": "Royal Broadband Services Rohini", "pid": "281749854677033", "d": "05/03/2026", "tm": "16:53:15", "c": "ram ji", "dev": "", "ph": "9015474338", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772719891329", "p": "NettCloud", "pid": "274877931333", "d": "05/03/2026", "tm": "19:41:31", "c": "vandna", "dev": "", "ph": "8826561043", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772707693444", "p": "Elife internet", "pid": "281749854671706", "d": "05/03/2026", "tm": "16:18:13", "c": "Sandeep Yadav", "dev": "SY22545", "ph": "9540702069", "ping": 8, "lp": "", "delta": "", "p24": 8, "s": "degraded"}, {"t": "772701387846", "p": "Vikas Kumar", "pid": "274877918547", "d": "05/03/2026", "tm": "14:33:08", "c": "Muskan", "dev": "SY079312", "ph": "8588846991", "ping": "", "lp": "", "delta": "", "p24": "", "s": "offline"}, {"t": "772799187829", "p": "Bhartiye Broadband Service", "pid": "281749855023768", "d": "06/03/2026", "tm": "17:43:08", "c": "office", "dev": "GX97775", "ph": "7065023392", "ping": "", "lp": null, "delta": "", "p24": "", "s": "offline"}, {"t": "772788529054", "p": "taniah", "pid": "281749854635281", "d": "06/03/2026", "tm": "14:45:29", "c": "Shivam Choudhary", "dev": "SY048134", "ph": "8076323151", "ping": 2, "lp": "2026-03-05 23:55:00", "delta": "14h 50m 29s", "p24": 106, "s": "poor"}, {"t": "772801079388", "p": "PLUS ULTRA WIFI", "pid": "281749855015771", "d": "06/03/2026", "tm": "18:14:39", "c": "Ritish Kumar", "dev": "GX161020", "ph": "8368597085", "ping": 7, "lp": "2026-03-06 00:05:00", "delta": "18h 9m 39s", "p24": 69, "s": "degraded"}, {"t": "772797984298", "p": "", "pid": "", "d": "06/03/2026", "tm": "17:23:04", "c": "", "dev": "SY082559", "ph": "9834251578", "ping": "", "lp": null, "delta": "", "p24": "", "s": "offline"}, {"t": "772791240968", "p": "EDN Broadband services", "pid": "281749854796219", "d": "06/03/2026", "tm": "15:30:41", "c": "sahrukh", "dev": "", "ph": "7617635693", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772865503884", "p": "INSPIRE INFRATECH PRIVATE LIMITED", "pid": "281749854729403", "d": "07/03/2026", "tm": "12:08:24", "c": "Rajesh ", "dev": "GX25478", "ph": "9560048058", "ping": 12, "lp": "2026-03-07 11:55:00", "delta": "0h 13m 24s", "p24": 286, "s": "healthy"}, {"t": "772886913994", "p": "Down To Earth Fiber Net", "pid": "281749854767160", "d": "07/03/2026", "tm": "18:05:14", "c": "Kishan", "dev": "", "ph": "9268585153", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772861765390", "p": "INSPIRE INFRATECH PRIVATE LIMITED", "pid": "281749854729403", "d": "07/03/2026", "tm": "11:06:05", "c": "Rajesh ", "dev": "SY070978", "ph": "9560048058", "ping": 8, "lp": "", "delta": "", "p24": 8, "s": "degraded"}, {"t": "772871415075", "p": "Down To Earth Fiber Net", "pid": "281749854767160", "d": "07/03/2026", "tm": "13:46:55", "c": "Kishan", "dev": "", "ph": "9268585153", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772869931877", "p": "SSK GLOBAL", "pid": "281749854731739", "d": "07/03/2026", "tm": "13:22:12", "c": "ssk global East ", "dev": "", "ph": "8368987504", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772866169676", "p": "amit", "pid": "281749854623367", "d": "07/03/2026", "tm": "12:19:30", "c": "Shri Ganga Cable TV Network", "dev": "60870", "ph": "9990065357", "ping": 5, "lp": "", "delta": "", "p24": 5, "s": "degraded"}, {"t": "772892485101", "p": "Unique Cable Network", "pid": "274877934138", "d": "07/03/2026", "tm": "19:38:05", "c": "Rajesh Varam", "dev": "", "ph": "9212267374", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772865002678", "p": "XPRESS NET SOLUTION-TILAK NAGAR", "pid": "281749854667213", "d": "07/03/2026", "tm": "12:00:03", "c": "Aman", "dev": "", "ph": "7982614203", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772953256225", "p": "ss fiber", "pid": "281749854641066", "d": "08/03/2026", "tm": "12:30:56", "c": "ss fiber", "dev": "163839", "ph": "8860646346", "ping": "", "lp": "2026-03-07 23:55:00", "delta": "12h 35m 56s", "p24": 130, "s": "offline"}, {"t": "772951669393", "p": "kunal", "pid": "281749854657354", "d": "08/03/2026", "tm": "12:04:29", "c": "Vimol Mayekar", "dev": "SY28947", "ph": "7219009201", "ping": "", "lp": "", "delta": "", "p24": "", "s": "offline"}, {"t": "772973753187", "p": "BALA JI DIGITAL CABLE NETWORK", "pid": "281749854696260", "d": "08/03/2026", "tm": "18:12:33", "c": "SUSHIL KUMAR", "dev": "", "ph": "9458653334", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772970429610", "p": "Pramod Cable Network", "pid": "281749854809464", "d": "08/03/2026", "tm": "17:17:10", "c": "Arpit Patel", "dev": "", "ph": "7452085851", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772957913577", "p": "Vishal Panchal", "pid": "281749854674987", "d": "08/03/2026", "tm": "13:48:34", "c": "Naveen Panchal", "dev": "", "ph": "7065404060", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772971384038", "p": "Ajay", "pid": "281749854729928", "d": "08/03/2026", "tm": "17:33:04", "c": "ASHISH YADAV ", "dev": "SY28633", "ph": "9616227587", "ping": "", "lp": null, "delta": "", "p24": "", "s": "offline"}, {"t": "772950067243", "p": "Govind", "pid": "274877909399", "d": "08/03/2026", "tm": "11:37:47", "c": "Office", "dev": "", "ph": "8929947593", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772949877237", "p": "SKY DIGITAL SERVICE", "pid": "281749854709709", "d": "08/03/2026", "tm": "11:34:37", "c": "shiv kumar ", "dev": "", "ph": "9990947707", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "772949253521", "p": "Manglam Digital Network", "pid": "281749854618576", "d": "08/03/2026", "tm": "11:24:14", "c": "9910109961", "dev": "", "ph": "9910109961", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "773068240960", "p": "Raju", "pid": "281749854653050", "d": "09/03/2026", "tm": "20:27:21", "c": "Rizwan", "dev": "SY19390", "ph": "9711602356", "ping": 11, "lp": "2026-03-09 19:55:00", "delta": "0h 32m 21s", "p24": 18, "s": "healthy"}, {"t": "773058214705", "p": "Unique Cable Network", "pid": "274877934138", "d": "09/03/2026", "tm": "17:40:15", "c": "Rajesh Varam", "dev": "GX48379", "ph": "9212267374", "ping": "", "lp": "2026-03-09 12:25:00", "delta": "5h 15m 15s", "p24": 219, "s": "offline"}, {"t": "773056621415", "p": "prem", "pid": "281749854673254", "d": "09/03/2026", "tm": "17:13:41", "c": "Jitendra Kumar", "dev": "GX71335", "ph": "9810464721", "ping": "", "lp": "", "delta": "", "p24": "", "s": "offline"}, {"t": "773126031198", "p": "Arora Internet Service ", "pid": "281749854826081", "d": "10/03/2026", "tm": "12:30:31", "c": "Jagjeet Arora", "dev": "SY104080", "ph": "9278001919", "ping": 8, "lp": "2026-03-10 04:25:00", "delta": "8h 5m 31s", "p24": 186, "s": "degraded"}, {"t": "773130202789", "p": "Wow! Wireless Fiber Internet", "pid": "274877916237", "d": "10/03/2026", "tm": "13:40:03", "c": "abdul kalam", "dev": "GX103460", "ph": "9136297626", "ping": "", "lp": "2026-03-10 00:10:00", "delta": "13h 30m 3s", "p24": 123, "s": "offline"}, {"t": "773130202789", "p": "Wow! Wireless Fiber Internet", "pid": "274877916237", "d": "10/03/2026", "tm": "13:40:03", "c": "abdul kalam", "dev": "102199", "ph": "9136297626", "ping": "", "lp": "2026-03-09 23:55:00", "delta": "13h 45m 3s", "p24": 119, "s": "offline"}, {"t": "773123116842", "p": "Akash", "pid": "281749854796024", "d": "10/03/2026", "tm": "11:41:57", "c": "Sanjay Sharma", "dev": "", "ph": "9971122332", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "773213187461", "p": "Down To Earth Fiber Net", "pid": "281749854767160", "d": "11/03/2026", "tm": "12:43:07", "c": "Kishan", "dev": "", "ph": "9268585153", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "773224623322", "p": "ANOOP INTERNET", "pid": "281749854671115", "d": "11/03/2026", "tm": "15:53:43", "c": "Anoop Owner ", "dev": "SY099425", "ph": "9811736419", "ping": "", "lp": "2026-03-11 00:00:00", "delta": "15h 53m 43s", "p24": 83, "s": "offline"}, {"t": "773219749912", "p": "Vicky Cable Network", "pid": "274877915267", "d": "11/03/2026", "tm": "14:32:30", "c": "rk", "dev": "GX114511", "ph": "9999869445", "ping": 12, "lp": "2026-03-11 13:55:00", "delta": "0h 37m 30s", "p24": 25, "s": "healthy"}, {"t": "773236200758", "p": "Batta Cable", "pid": "281749854812286", "d": "11/03/2026", "tm": "19:06:41", "c": "Batta Cable", "dev": "GX139509", "ph": "9005642000", "ping": 12, "lp": "2026-03-11 18:55:00", "delta": "0h 11m 41s", "p24": 283, "s": "healthy"}, {"t": "773236200758", "p": "Batta Cable", "pid": "281749854812286", "d": "11/03/2026", "tm": "19:06:41", "c": "Batta Cable", "dev": "GX119280", "ph": "9005642000", "ping": 12, "lp": "2026-03-11 18:55:00", "delta": "0h 11m 41s", "p24": 286, "s": "healthy"}, {"t": "773236200758", "p": "Batta Cable", "pid": "281749854812286", "d": "11/03/2026", "tm": "19:06:41", "c": "Batta Cable", "dev": "GX145208", "ph": "9005642000", "ping": 12, "lp": "2026-03-11 18:55:00", "delta": "0h 11m 41s", "p24": 283, "s": "healthy"}, {"t": "773306263873", "p": "MANISHA TRADERS 1", "pid": "281749854765151", "d": "12/03/2026", "tm": "14:34:24", "c": "Owais", "dev": "SY080524", "ph": "8218995779", "ping": "", "lp": "2026-03-12 00:05:00", "delta": "14h 29m 24s", "p24": 106, "s": "offline"}, {"t": "773294697520", "p": "Wow! Wireless Fiber Internet", "pid": "274877916237", "d": "12/03/2026", "tm": "11:21:38", "c": "abdul kalam", "dev": "GX127746", "ph": "9136297626", "ping": 12, "lp": "2026-03-12 10:55:00", "delta": "0h 26m 38s", "p24": 286, "s": "healthy"}, {"t": "773303826864", "p": "shweta", "pid": "281749854756891", "d": "12/03/2026", "tm": "13:53:47", "c": "Shweta Internet Service", "dev": "SY076879", "ph": "9821154381", "ping": 4, "lp": "2026-03-11 00:30:00", "delta": "37h 23m 47s", "p24": 4, "s": "poor"}, {"t": "773328777024", "p": "R K Cable Network", "pid": "281749854698041", "d": "12/03/2026", "tm": "20:49:37", "c": "Rajesh Kumar", "dev": "GX63421", "ph": "9808153047", "ping": 12, "lp": "2026-03-12 19:55:00", "delta": "0h 54m 37s", "p24": 285, "s": "healthy"}, {"t": "773301445580", "p": "Broadband Solution", "pid": "281749854677690", "d": "12/03/2026", "tm": "13:14:06", "c": "Ashutosh Mishra", "dev": "", "ph": "9312004211", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "773393362849", "p": "Saipuja Internet Service (Kurla West)", "pid": "281749854637887", "d": "13/03/2026", "tm": "14:46:03", "c": "Subhash Mestry", "dev": "", "ph": "9869559358", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "773413000669", "p": "R R Enterprises", "pid": "281749854767163", "d": "13/03/2026", "tm": "20:13:21", "c": "R R Enterprises", "dev": "", "ph": "8445605560", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "773407029746", "p": "RK CABLE", "pid": "274877928231", "d": "13/03/2026", "tm": "18:33:50", "c": "RKCABLE", "dev": "SY8835", "ph": "9250550337", "ping": 5, "lp": "2026-03-13 00:05:00", "delta": "18h 28m 50s", "p24": 64, "s": "degraded"}, {"t": "773392120704", "p": "Anitel", "pid": "274877929231", "d": "13/03/2026", "tm": "14:25:21", "c": "ashish", "dev": "GX103595", "ph": "9354402707", "ping": 3, "lp": "2026-03-12 20:35:00", "delta": "17h 50m 21s", "p24": 71, "s": "poor"}, {"t": "773384118118", "p": "Virender Singh", "pid": "281749854787244", "d": "13/03/2026", "tm": "12:11:58", "c": "somnath", "dev": "GX135884", "ph": "7303351654", "ping": 6, "lp": "2026-03-12 23:50:00", "delta": "12h 21m 58s", "p24": 114, "s": "degraded"}, {"t": "773484368850", "p": "Maa Vasnavi internet Services", "pid": "281749854790292", "d": "14/03/2026", "tm": "16:02:49", "c": "Sonu Gautam", "dev": "", "ph": "7060188051", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "773554368890", "p": "Arora Internet Service ", "pid": "281749854826081", "d": "15/03/2026", "tm": "11:29:29", "c": "Jagjeet Arora", "dev": "", "ph": "9278001919", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "773553932561", "p": "Arora Internet Service ", "pid": "281749854826081", "d": "15/03/2026", "tm": "11:22:13", "c": "Jagjeet Arora", "dev": "GX120257", "ph": "9278001919", "ping": 12, "lp": "2026-03-15 10:55:00", "delta": "0h 27m 13s", "p24": 285, "s": "healthy"}, {"t": "773553094314", "p": "Krishna Broadband and Yadav Cable Network", "pid": "281749854660889", "d": "15/03/2026", "tm": "11:08:14", "c": "Harish ", "dev": "SY20777", "ph": "7065886681", "ping": "", "lp": "", "delta": "", "p24": "", "s": "offline"}, {"t": "773558934869", "p": "Dashmesh Cable And Internet", "pid": "281749854671527", "d": "15/03/2026", "tm": "12:45:35", "c": "kavita beniwal", "dev": "GX61888", "ph": "8527516992", "ping": "", "lp": null, "delta": "", "p24": "", "s": "offline"}, {"t": "773580667140", "p": "9319667682", "pid": "", "d": "15/03/2026", "tm": "18:47:47", "c": "9319667682", "dev": "SY1681", "ph": "9319667682", "ping": "", "lp": "2026-03-15 13:55:00", "delta": "4h 52m 47s", "p24": 219, "s": "offline"}, {"t": "773665372607", "p": "Unique Cable Network", "pid": "274877934138", "d": "16/03/2026", "tm": "18:19:33", "c": "RAJEEV SINGH", "dev": "SY088094", "ph": "9810393501", "ping": 12, "lp": "2026-03-16 17:55:00", "delta": "0h 24m 33s", "p24": 72, "s": "healthy"}, {"t": "773645851755", "p": "TNB Infotech", "pid": "281749854622584", "d": "16/03/2026", "tm": "12:54:12", "c": "TNB Infotech", "dev": "SY23206", "ph": "9899222772", "ping": "", "lp": "2026-03-16 00:05:00", "delta": "12h 49m 12s", "p24": 129, "s": "offline"}, {"t": "773660481237", "p": "Speedcom Enterprises - Miraroad", "pid": "281749854661311", "d": "16/03/2026", "tm": "16:58:01", "c": "Rahul Singh", "dev": "173117", "ph": "7045003600", "ping": "", "lp": "", "delta": "", "p24": "", "s": "offline"}, {"t": "773726079126", "p": "Hitech Broadband Network-East", "pid": "281749854625361", "d": "17/03/2026", "tm": "11:11:19", "c": "Deepak Kumar", "dev": "SY2203", "ph": "7290847431", "ping": 11, "lp": "2026-03-17 10:55:00", "delta": "0h 16m 19s", "p24": 275, "s": "healthy"}, {"t": "773730370583", "p": "VARUN BROADBAND", "pid": "281749854688566", "d": "17/03/2026", "tm": "12:22:51", "c": "Hukam Singh", "dev": "SY057221", "ph": "8178290033", "ping": "", "lp": "2026-03-16 19:55:00", "delta": "16h 27m 51s", "p24": 80, "s": "offline"}, {"t": "773730370583", "p": "VARUN BROADBAND", "pid": "281749854688566", "d": "17/03/2026", "tm": "12:22:51", "c": "Hukam Singh", "dev": "SY081355", "ph": "8178290033", "ping": "", "lp": "2026-03-16 20:10:00", "delta": "16h 12m 51s", "p24": 62, "s": "offline"}, {"t": "773730370583", "p": "VARUN BROADBAND", "pid": "281749854688566", "d": "17/03/2026", "tm": "12:22:51", "c": "Hukam Singh", "dev": "GX45045", "ph": "8178290033", "ping": "", "lp": "2026-03-16 20:00:00", "delta": "16h 22m 51s", "p24": 72, "s": "offline"}, {"t": "773730370583", "p": "VARUN BROADBAND", "pid": "281749854688566", "d": "17/03/2026", "tm": "12:22:51", "c": "Hukam Singh", "dev": "GX45341", "ph": "8178290033", "ping": "", "lp": "", "delta": "", "p24": "", "s": "offline"}, {"t": "773747749571", "p": "VARUN BROADBAND", "pid": "281749854688566", "d": "17/03/2026", "tm": "17:12:30", "c": "Hukam Singh", "dev": "GX45086", "ph": "8178290033", "ping": "", "lp": "2026-03-17 12:55:00", "delta": "4h 17m 30s", "p24": 227, "s": "offline"}, {"t": "773747749571", "p": "VARUN BROADBAND", "pid": "281749854688566", "d": "17/03/2026", "tm": "17:12:30", "c": "Hukam Singh", "dev": "GX35296", "ph": "8178290033", "ping": "", "lp": "2026-03-17 12:55:00", "delta": "4h 17m 30s", "p24": 224, "s": "offline"}, {"t": "773725790394", "p": "Rashmi Singh Chowhan", "pid": "281749854807333", "d": "17/03/2026", "tm": "11:06:30", "c": "Rashmi Singh Chowhan", "dev": "GX97485", "ph": "9336629508", "ping": 12, "lp": "2026-03-17 10:55:00", "delta": "0h 11m 30s", "p24": 169, "s": "healthy"}, {"t": "773725790394", "p": "Rashmi Singh Chowhan", "pid": "281749854807333", "d": "17/03/2026", "tm": "11:06:30", "c": "Rashmi Singh Chowhan", "dev": "GX97798", "ph": "9336629508", "ping": 12, "lp": "2026-03-17 10:55:00", "delta": "0h 11m 30s", "p24": 285, "s": "healthy"}, {"t": "773749315803", "p": "ATM Network", "pid": "281749854699276", "d": "17/03/2026", "tm": "17:38:36", "c": "Ashok Kumar ", "dev": "GX142576", "ph": "9268818888", "ping": "", "lp": null, "delta": "", "p24": "", "s": "offline"}, {"t": "773747841969", "p": "Chaannel Club", "pid": "281749854677840", "d": "17/03/2026", "tm": "17:14:02", "c": "Chaannel Club", "dev": "SY26829", "ph": "9167880015", "ping": "", "lp": "", "delta": "", "p24": "", "s": "offline"}, {"t": "773820219307", "p": "varun", "pid": "281749854637030", "d": "18/03/2026", "tm": "13:20:19", "c": "Sanjeev Kumar", "dev": "", "ph": "9899910097", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "773821483355", "p": "S.R Technologies", "pid": "281749854634984", "d": "18/03/2026", "tm": "13:41:23", "c": "deepak", "dev": "", "ph": "9711274203", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "773813936886", "p": "Shagun Cable TV & Broadband", "pid": "281749854618551", "d": "18/03/2026", "tm": "11:35:37", "c": "sk", "dev": "", "ph": "7011483295", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "773825002693", "p": "Montu", "pid": "281749854643268", "d": "18/03/2026", "tm": "14:40:03", "c": "Suraj Chimukale", "dev": "", "ph": "8655520011", "ping": "", "lp": "", "delta": "", "p24": "", "s": "no_device"}, {"t": "773834957263", "p": "prem", "pid": "281749854673254", "d": "18/03/2026", "tm": "17:25:57", "c": "vinod", "dev": "GX108050", "ph": "9310707894", "ping": 12, "lp": "2026-03-18 16:55:00", "delta": "0h 30m 57s", "p24": 286, "s": "healthy"}, {"t": "773838573936", "p": "DEEPIKA CABLE NETWORK", "pid": "281749854709079", "d": "18/03/2026", "tm": "18:26:14", "c": "BIJENDER SINGH", "dev": "GX31411", "ph": "9911311144", "ping": "", "lp": "2026-03-18 00:05:00", "delta": "18h 21m 14s", "p24": 62, "s": "offline"}, {"t": "773823822548", "p": "Tarun Yadav", "pid": "281749854697492", "d": "18/03/2026", "tm": "14:20:23", "c": "Megh Raj", "dev": "SY109304", "ph": "8587855252", "ping": 5, "lp": "", "delta": "", "p24": 5, "s": "degraded"}, {"t": "773815443333", "p": "Anaya Broadband", "pid": "281749854665050", "d": "18/03/2026", "tm": "12:00:43", "c": "Anuj", "dev": "SY23500", "ph": "8192888842", "ping": 11, "lp": "2026-03-18 11:55:00", "delta": "0h 5m 43s", "p24": 152, "s": "healthy"}, {"t": "773812952109", "p": "Soni Broadband Services", "pid": "281749854787719", "d": "18/03/2026", "tm": "11:19:12", "c": "Pankaj Soni", "dev": "SY073942", "ph": "9368866644", "ping": "", "lp": "", "delta": "", "p24": "", "s": "offline"}];
+
+// ===== Weekly Calls Chart =====
+new Chart(document.getElementById('weeklyCallsChart'), {
+  type:'bar',
+  data:{
+    labels: weekly.map(w=>w.week),
+    datasets:[
+      {label:'Offline',data:weekly.map(w=>w.offline),backgroundColor:'#E01E00',borderRadius:3,stack:'a'},
+      {label:'Online',data:weekly.map(w=>w.online),backgroundColor:'#008043',borderRadius:3,stack:'a'},
+      {label:'No Device',data:weekly.map(w=>w.no_device),backgroundColor:'#665E75',borderRadius:3,stack:'a'},
+    ]
+  },
+  options:{
+    responsive:true,
+    plugins:{
+      legend:{position:'top',labels:{color:'#665E75',font:{size:11}}},
+      datalabels: defaultDatalabels
+    },
+    scales:{
+      x:{stacked:true,ticks:{color:'#665E75'},grid:{display:false}},
+      y:{stacked:true,ticks:{color:'#665E75'},grid:{color:'rgba(102,94,117,.12)'},title:{display:true,text:'Calls',color:'#665E75'}}
+    }
+  }
+});
+
+// ===== Weekly Partners Chart =====
+new Chart(document.getElementById('weeklyPartnersChart'), {
+  type:'bar',
+  data:{
+    labels: weekly.map(w=>w.week),
+    datasets:[
+      {label:'Partners with Offline',data:weekly.map(w=>w.partners_offline),backgroundColor:'#E01E00',borderRadius:3},
+      {label:'Total Partners',data:weekly.map(w=>w.partners_total),backgroundColor:'rgba(217,0,141,.25)',borderRadius:3},
+    ]
+  },
+  options:{
+    responsive:true,
+    plugins:{
+      legend:{position:'top',labels:{color:'#665E75',font:{size:11}}},
+      datalabels: defaultDatalabels
+    },
+    scales:{
+      x:{ticks:{color:'#665E75'},grid:{display:false}},
+      y:{ticks:{color:'#665E75',stepSize:5},grid:{color:'rgba(102,94,117,.12)'},title:{display:true,text:'Partners',color:'#665E75'}}
+    }
+  }
+});
+
+// ===== Weekly Table =====
+const wtBody = document.getElementById('weeklyTableBody');
+weekly.forEach(w => {
+  const offPct = w.total_calls > 0 ? Math.round(w.offline/w.total_calls*100) : 0;
+  const barW = Math.max(offPct, 2);
+  wtBody.innerHTML += `<tr class="${w.offline > 5 ? 'highlight' : ''}">
+    <td style="font-weight:600">${w.week}</td>
+    <td style="font-weight:700;font-size:15px">${w.total_calls}</td>
+    <td style="color:var(--red);font-weight:700">${w.offline}</td>
+    <td style="color:var(--green)">${w.online}</td>
+    <td style="color:var(--muted)">${w.no_device}</td>
+    <td style="font-weight:600;color:${offPct>=40?'var(--red)':offPct>=20?'var(--amber)':'var(--green)'}">${offPct}%</td>
+    <td>${w.partners_total}</td>
+    <td style="color:var(--red);font-weight:600">${w.partners_offline}</td>
+    <td><div class="bar-bg"><div class="bar-fill" style="width:${barW}%;background:var(--red)"></div></div></td>
+  </tr>`;
+});
+
+// ===== Daily Chart =====
+new Chart(document.getElementById('dailyChart'), {
+  type:'bar',
+  data:{
+    labels: daily.map(d=>d.date.substring(0,5)),
+    datasets:[
+      {label:'Offline',data:daily.map(d=>d.offline),backgroundColor:'#E01E00',borderRadius:2,stack:'a'},
+      {label:'Online',data:daily.map(d=>d.online),backgroundColor:'#008043',borderRadius:2,stack:'a'},
+      {label:'No Device',data:daily.map(d=>d.no_device),backgroundColor:'#665E75',borderRadius:2,stack:'a'},
+    ]
+  },
+  options:{
+    responsive:true,
+    plugins:{
+      legend:{position:'top',labels:{color:'#665E75',font:{size:11}}},
+      datalabels: defaultDatalabels
+    },
+    scales:{
+      x:{stacked:true,ticks:{color:'#665E75',maxRotation:45},grid:{display:false}},
+      y:{stacked:true,ticks:{color:'#665E75'},grid:{color:'rgba(102,94,117,.12)'}}
+    }
+  }
+});
+
+// ===== Status Pie =====
+new Chart(document.getElementById('statusPie'), {
+  type:'doughnut',
+  data:{
+    labels:['Offline at Call (35)','Online at Call (50)','No Device ID (63)'],
+    datasets:[{data:[35,50,63],backgroundColor:['#E01E00','#008043','#665E75'],borderWidth:0,hoverOffset:8}]
+  },
+  options:{
+    responsive:true,
+    plugins:{
+      legend:{position:'bottom',labels:{color:'#665E75',padding:16,font:{size:12}}},
+      datalabels:{
+        color:'#161021', font:{weight:'bold',size:14},
+        formatter:(v,ctx) => {
+          const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+          return Math.round(v/total*100)+'%';
+        }
+      }
+    }
+  }
+});
+
+// ===== Partner Bar =====
+const topPartners = partners.filter(p=>p.offline>0).slice(0,20);
+new Chart(document.getElementById('partnerBar'), {
+  type:'bar',
+  data:{
+    labels: topPartners.map(p=>p.name.length>30?p.name.substring(0,28)+'..':p.name),
+    datasets:[
+      {label:'Offline Calls',data:topPartners.map(p=>p.offline),backgroundColor:'#E01E00',borderRadius:4},
+      {label:'Online Calls',data:topPartners.map(p=>p.online),backgroundColor:'#008043',borderRadius:4},
+      {label:'No Device',data:topPartners.map(p=>p.no_device),backgroundColor:'#665E75',borderRadius:4},
+    ]
+  },
+  options:{
+    indexAxis:'y', responsive:true,
+    plugins:{
+      legend:{position:'top',labels:{color:'#665E75',font:{size:11}}},
+      datalabels: defaultDatalabels
+    },
+    scales:{
+      x:{stacked:true,ticks:{color:'#665E75',stepSize:1},grid:{color:'rgba(102,94,117,.12)'}},
+      y:{stacked:true,ticks:{color:'#352D42',font:{size:11}},grid:{display:false}}
+    }
+  }
+});
+
+// ===== Partner Table =====
+const ptBody = document.getElementById('partnerTableBody');
+partners.forEach(p => {
+  const devTotal = p.offline + p.online;
+  const offPct = devTotal > 0 ? Math.round(p.offline/devTotal*100)+'%' : 'N/A';
+  let badge = '';
+  if (devTotal===0) badge='<span class="badge badge-gray">No Device</span>';
+  else if (p.offline===0) badge='<span class="badge badge-green">All Online</span>';
+  else if (p.online===0&&p.offline>0) badge='<span class="badge badge-red">All Offline</span>';
+  else badge='<span class="badge badge-amber">Mixed</span>';
+  ptBody.innerHTML += `<tr>
+    <td>${p.name}</td>
+    <td style="font-family:monospace;font-size:11px;color:var(--muted)">${p.pid}</td>
+    <td style="font-weight:600">${p.total}</td>
+    <td style="color:${p.offline?'var(--red)':'var(--muted)'};font-weight:${p.offline?'700':'400'}">${p.offline}</td>
+    <td style="color:${p.online?'var(--green)':'var(--muted)'}">${p.online}</td>
+    <td style="color:var(--muted)">${p.no_device}</td>
+    <td style="font-weight:600;color:${devTotal>0&&p.offline/devTotal>=.5?'var(--red)':'var(--green)'}">${offPct}</td>
+    <td>${badge}</td>
+  </tr>`;
+});
+
+// ===== Ticket Table =====
+const ttBody = document.getElementById('ticketTableBody');
+tickets.forEach(r => {
+  let status = '';
+  if (r.s==='no_device') status='<span class="badge badge-gray">No Device</span>';
+  else if (r.s==='offline') status='<span class="badge badge-red">Offline</span>';
+  else if (r.s==='healthy') status='<span class="badge badge-green">Healthy</span>';
+  else if (r.s==='degraded') status='<span class="badge badge-amber">Degraded</span>';
+  else status='<span class="badge badge-red">Poor</span>';
+  ttBody.innerHTML += `<tr>
+    <td style="font-family:monospace;font-size:11px">${r.t}</td>
+    <td>${r.p}</td>
+    <td style="white-space:nowrap">${r.d}</td>
+    <td style="white-space:nowrap">${r.tm}</td>
+    <td>${r.c}</td>
+    <td style="font-family:monospace">${r.dev||'-'}</td>
+    <td style="font-family:monospace">${r.ph}</td>
+    <td style="text-align:center;font-weight:600;color:${r.ping?(parseInt(r.ping)>=10?'var(--green)':parseInt(r.ping)>=5?'var(--amber)':'var(--red)'):'var(--muted)'}">${r.ping||'-'}</td>
+    <td style="font-size:11px;white-space:nowrap">${r.lp||'-'}</td>
+    <td style="font-size:11px;white-space:nowrap">${r.delta||'-'}</td>
+    <td style="text-align:center">${r.p24||'-'}</td>
+    <td>${status}</td>
+  </tr>`;
+});
+
+// ===== CSV Download =====
+document.getElementById('downloadCsvBtn').addEventListener('click', function(e) {
+  e.preventDefault();
+  const headers = ['Ticket ID','Partner Name','Partner ID','Call Date','Call Time','Customer','Device ID','Phone','Ping at Call','Last Ping Before Call','Delta','Pings in 24h','Status'];
+  const csvRows = [headers.join(',')];
+  tickets.forEach(r => {
+    const row = [r.t, '"'+r.p+'"', r.pid, r.d, r.tm, '"'+r.c+'"', r.dev, r.ph, r.ping, r.lp, r.delta, r.p24, r.s];
+    csvRows.push(row.join(','));
+  });
+  const blob = new Blob([csvRows.join('\n')], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'recharge_commission_raw_data.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
