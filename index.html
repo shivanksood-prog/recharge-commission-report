@@ -216,49 +216,75 @@
   <div class="example-grid">
     <!-- Example 1 -->
     <div class="example-card">
-      <div class="ex-label">Example 1 &mdash; Device ID: 48251 (28-day recharge cycle)</div>
-      <div style="display:flex;align-items:stretch;gap:0;margin:16px 0">
-        <!-- Cycle 1 block -->
-        <div style="flex:2;display:flex;gap:0">
-          <div class="timeline-step active" style="flex:1">
-            <div class="ts-label">Recharge 1</div>
-            <div class="ts-time">13 Feb, 17:00</div>
-            <div class="ts-detail">Partner recharges for 28 days</div>
-          </div>
-          <div class="timeline-step green" style="flex:1">
-            <div class="ts-label">ISP Ticket 1 Starts</div>
-            <div class="ts-time">14 Feb, 00:00</div>
-            <div class="ts-detail">Commission visible at midnight</div>
-          </div>
+      <div class="ex-label">Example 1 &mdash; Device ID: 48251 (28-day plan, H8)</div>
+
+      <!-- Row 1: The first recharge cycle -->
+      <div style="display:flex;align-items:center;gap:0;margin:16px 0 8px">
+        <div class="timeline-step active" style="flex:1">
+          <div class="ts-label">Recharge 1</div>
+          <div class="ts-time">13 Feb, 17:00</div>
+          <div class="ts-detail">Partner recharges for 28 days</div>
         </div>
-        <!-- 28-day bridge -->
-        <div style="flex:3;display:flex;align-items:center;position:relative;margin:0 4px">
-          <div style="width:100%;border-top:2px dashed var(--neutral-300);position:relative">
-            <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--neutral-100);padding:2px 12px;font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;border-radius:4px">
-              28-day plan active &rarr; customer uses internet
+        <div class="timeline-step green" style="flex:1">
+          <div class="ts-label">ISP Ticket 1 Starts</div>
+          <div class="ts-time">14 Feb, 00:00</div>
+          <div class="ts-detail">Commission visible at midnight</div>
+        </div>
+        <div style="flex:2;display:flex;align-items:center;position:relative;margin:0 8px">
+          <div style="width:100%;border-top:2px dashed var(--green);position:relative">
+            <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--neutral-100);padding:2px 12px;font-size:11px;font-weight:600;color:var(--green);white-space:nowrap;border-radius:4px">
+              28 days &mdash; internet active, commission earned
             </div>
           </div>
         </div>
-        <!-- Cycle 2 block -->
-        <div style="flex:2;display:flex;gap:0">
-          <div class="timeline-step amber" style="flex:1">
-            <div class="ts-label">Recharge 2</div>
-            <div class="ts-time">13 Mar, 21:00</div>
-            <div class="ts-detail">Plan expiring, partner renews</div>
+        <div class="timeline-step" style="flex:1;border-top-color:var(--red)">
+          <div class="ts-label" style="color:var(--red)">Plan Expires</div>
+          <div class="ts-time" style="color:var(--red);font-weight:700">13 Mar, 00:00</div>
+          <div class="ts-detail">Internet stops, ISP ticket ends</div>
+          <div style="position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;background:var(--red);border:2px solid var(--card)"></div>
+        </div>
+      </div>
+
+      <!-- Row 2: The problem day — 13 March -->
+      <div style="background:rgba(224,30,0,.06);border:1px solid rgba(224,30,0,.2);border-radius:8px;padding:16px 20px;margin:12px 0">
+        <div style="font-size:12px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">13 March — The Problem Day</div>
+        <div style="display:flex;gap:16px;align-items:flex-start">
+          <div style="flex:1">
+            <div style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px">Customer</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6">
+              No internet since midnight. Device is <strong style="color:var(--red)">offline &mdash; zero pings</strong> entire day.
+            </div>
           </div>
-          <div class="timeline-step green" style="flex:1">
-            <div class="ts-label">ISP Ticket 2 Starts</div>
-            <div class="ts-time">14 Mar, 00:00</div>
-            <div class="ts-detail">New commission at midnight</div>
+          <div style="flex:1">
+            <div style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px">Partner</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6">
+              No ISP ticket visible. No commission credit. <strong style="color:var(--red)">Calls PTL in the morning</strong> complaining about missing commission.
+            </div>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px">What We See</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6">
+              Device ping = <strong style="color:var(--red)">0</strong> at call time. Plan has expired. Recharge not done yet &rarr; no new ISP ticket &rarr; no commission.
+            </div>
           </div>
         </div>
       </div>
-      <div style="display:flex;gap:12px;margin-top:8px">
-        <div style="flex:1;padding:10px 14px;background:rgba(0,128,67,.06);border-radius:6px;border-left:3px solid var(--green);font-size:12px;color:var(--muted)">
-          <strong style="color:var(--green)">If device is online on 13 Mar</strong> &rarr; recharge processes &rarr; ISP ticket created 14 Mar &rarr; commission visible
+
+      <!-- Row 3: Resolution -->
+      <div style="display:flex;align-items:center;gap:0;margin:8px 0">
+        <div class="timeline-step amber" style="flex:1">
+          <div class="ts-label">Recharge 2</div>
+          <div class="ts-time">13 Mar, 21:00</div>
+          <div class="ts-detail">Partner finally recharges again</div>
         </div>
-        <div style="flex:1;padding:10px 14px;background:rgba(224,30,0,.06);border-radius:6px;border-left:3px solid var(--red);font-size:12px;color:var(--muted)">
-          <strong style="color:var(--red)">If device is offline on 13 Mar</strong> &rarr; recharge fails &rarr; no ISP ticket on 14 Mar &rarr; partner calls about missing commission
+        <div class="timeline-step green" style="flex:1">
+          <div class="ts-label">ISP Ticket 2 Starts</div>
+          <div class="ts-time">14 Mar, 00:00</div>
+          <div class="ts-detail">New commission at midnight</div>
+        </div>
+        <div style="flex:2;padding:8px 16px">
+          <div style="font-size:12px;color:var(--green);font-weight:600">Internet restored. New commission cycle begins.</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Customer had no internet for ~21 hours (00:00 to 21:00 on 13 Mar)</div>
         </div>
       </div>
     </div>
