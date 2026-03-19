@@ -218,75 +218,99 @@
     <div class="example-card">
       <div class="ex-label">Example 1 &mdash; Device ID: 48251 (28-day plan, H8)</div>
 
-      <!-- Row 1: The first recharge cycle -->
-      <div style="display:flex;align-items:center;gap:0;margin:16px 0 8px">
-        <div class="timeline-step active" style="flex:1">
-          <div class="ts-label">Recharge 1</div>
-          <div class="ts-time">13 Feb, 17:00</div>
-          <div class="ts-detail">Partner recharges for 28 days</div>
-        </div>
-        <div class="timeline-step green" style="flex:1">
-          <div class="ts-label">ISP Ticket 1 Starts</div>
-          <div class="ts-time">14 Feb, 00:00</div>
-          <div class="ts-detail">Commission visible at midnight</div>
-        </div>
-        <div style="flex:2;display:flex;align-items:center;position:relative;margin:0 8px">
-          <div style="width:100%;border-top:2px dashed var(--green);position:relative">
-            <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--neutral-100);padding:2px 12px;font-size:11px;font-weight:600;color:var(--green);white-space:nowrap;border-radius:4px">
-              28 days &mdash; internet active, commission earned
-            </div>
-          </div>
-        </div>
-        <div class="timeline-step" style="flex:1;border-top-color:var(--red)">
-          <div class="ts-label" style="color:var(--red)">Plan Expires</div>
-          <div class="ts-time" style="color:var(--red);font-weight:700">13 Mar, 00:00</div>
-          <div class="ts-detail">Internet stops, ISP ticket ends</div>
-          <div style="position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;background:var(--red);border:2px solid var(--card)"></div>
-        </div>
+      <!-- Step-by-step vertical flow -->
+      <table style="width:100%;border-collapse:collapse;margin:16px 0 12px;font-size:13px">
+        <tr>
+          <td style="width:36px;vertical-align:top;padding:6px 0">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+          </td>
+          <td style="padding:6px 12px;vertical-align:top">
+            <strong>Recharge 1</strong> &mdash; <span style="color:var(--muted)">13 Feb, 17:00</span>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Partner recharges customer for 28 days</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="vertical-align:top;padding:6px 0;text-align:center">
+            <div style="width:2px;height:16px;background:var(--neutral-300);margin:0 auto"></div>
+          </td>
+          <td></td>
+        </tr>
+        <tr>
+          <td style="vertical-align:top;padding:6px 0">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+          </td>
+          <td style="padding:6px 12px;vertical-align:top">
+            <strong>ISP Ticket 1 starts</strong> &mdash; <span style="color:var(--muted)">14 Feb, 00:00</span>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Commission becomes visible at midnight. Customer internet is active.</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="vertical-align:top;padding:6px 0;text-align:center">
+            <div style="width:2px;height:20px;border-left:2px dashed var(--green);margin:0 auto"></div>
+          </td>
+          <td style="padding:8px 12px">
+            <div style="font-size:12px;color:var(--green);font-weight:600;font-style:italic">28 days pass &mdash; customer uses internet, partner earns commission</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="vertical-align:top;padding:6px 0">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">3</div>
+          </td>
+          <td style="padding:6px 12px;vertical-align:top">
+            <strong style="color:var(--red)">Plan Expires</strong> &mdash; <span style="color:var(--red);font-weight:600">13 Mar, 00:00</span>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">ISP ticket ends. Customer internet stops. Device goes <strong style="color:var(--red)">offline</strong>.</div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- The problem day -->
+      <div style="background:rgba(224,30,0,.06);border:1px solid rgba(224,30,0,.15);border-radius:8px;padding:16px 20px;margin:8px 0 12px">
+        <div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">13 March &mdash; The Problem Day</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <tr>
+            <td style="padding:8px 12px;vertical-align:top;width:33%;border-right:1px solid rgba(224,30,0,.1)">
+              <div style="font-weight:700;color:var(--text);margin-bottom:4px">Customer</div>
+              <div style="color:var(--muted);line-height:1.6">No internet since midnight.<br>Device <strong style="color:var(--red)">offline &mdash; zero pings</strong> entire day.</div>
+            </td>
+            <td style="padding:8px 12px;vertical-align:top;width:33%;border-right:1px solid rgba(224,30,0,.1)">
+              <div style="font-weight:700;color:var(--text);margin-bottom:4px">Partner</div>
+              <div style="color:var(--muted);line-height:1.6">No ISP ticket. No commission.<br><strong style="color:var(--red)">Calls PTL in the morning</strong> &mdash; &ldquo;commission nahi aaya&rdquo;</div>
+            </td>
+            <td style="padding:8px 12px;vertical-align:top;width:33%">
+              <div style="font-weight:700;color:var(--text);margin-bottom:4px">What Our Data Shows</div>
+              <div style="color:var(--muted);line-height:1.6">Device ping = <strong style="color:var(--red)">0</strong> at call time.<br>Plan expired. No recharge done &rarr; no ISP ticket &rarr; no commission.</div>
+            </td>
+          </tr>
+        </table>
       </div>
 
-      <!-- Row 2: The problem day — 13 March -->
-      <div style="background:rgba(224,30,0,.06);border:1px solid rgba(224,30,0,.2);border-radius:8px;padding:16px 20px;margin:12px 0">
-        <div style="font-size:12px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">13 March — The Problem Day</div>
-        <div style="display:flex;gap:16px;align-items:flex-start">
-          <div style="flex:1">
-            <div style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px">Customer</div>
-            <div style="font-size:12px;color:var(--muted);line-height:1.6">
-              No internet since midnight. Device is <strong style="color:var(--red)">offline &mdash; zero pings</strong> entire day.
-            </div>
-          </div>
-          <div style="flex:1">
-            <div style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px">Partner</div>
-            <div style="font-size:12px;color:var(--muted);line-height:1.6">
-              No ISP ticket visible. No commission credit. <strong style="color:var(--red)">Calls PTL in the morning</strong> complaining about missing commission.
-            </div>
-          </div>
-          <div style="flex:1">
-            <div style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px">What We See</div>
-            <div style="font-size:12px;color:var(--muted);line-height:1.6">
-              Device ping = <strong style="color:var(--red)">0</strong> at call time. Plan has expired. Recharge not done yet &rarr; no new ISP ticket &rarr; no commission.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Row 3: Resolution -->
-      <div style="display:flex;align-items:center;gap:0;margin:8px 0">
-        <div class="timeline-step amber" style="flex:1">
-          <div class="ts-label">Recharge 2</div>
-          <div class="ts-time">13 Mar, 21:00</div>
-          <div class="ts-detail">Partner finally recharges again</div>
-        </div>
-        <div class="timeline-step green" style="flex:1">
-          <div class="ts-label">ISP Ticket 2 Starts</div>
-          <div class="ts-time">14 Mar, 00:00</div>
-          <div class="ts-detail">New commission at midnight</div>
-        </div>
-        <div style="flex:2;padding:8px 16px">
-          <div style="font-size:12px;color:var(--green);font-weight:600">Internet restored. New commission cycle begins.</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Customer had no internet for ~21 hours (00:00 to 21:00 on 13 Mar)</div>
-        </div>
-      </div>
+      <!-- Resolution -->
+      <table style="width:100%;border-collapse:collapse;margin:0 0 8px;font-size:13px">
+        <tr>
+          <td style="width:36px;vertical-align:top;padding:6px 0">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--amber);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">4</div>
+          </td>
+          <td style="padding:6px 12px;vertical-align:top">
+            <strong>Recharge 2</strong> &mdash; <span style="color:var(--muted)">13 Mar, 21:00</span>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Partner finally recharges again. Customer was without internet for <strong style="color:var(--red)">~21 hours</strong>.</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="vertical-align:top;padding:6px 0;text-align:center">
+            <div style="width:2px;height:12px;background:var(--neutral-300);margin:0 auto"></div>
+          </td>
+          <td></td>
+        </tr>
+        <tr>
+          <td style="vertical-align:top;padding:6px 0">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">5</div>
+          </td>
+          <td style="padding:6px 12px;vertical-align:top">
+            <strong>ISP Ticket 2 starts</strong> &mdash; <span style="color:var(--muted)">14 Mar, 00:00</span>
+            <div style="font-size:12px;color:var(--green);margin-top:2px">Internet restored. New commission cycle begins.</div>
+          </td>
+        </tr>
+      </table>
     </div>
 
     <!-- Example 2 -->
