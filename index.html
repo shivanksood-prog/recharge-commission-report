@@ -149,6 +149,51 @@
   }
   .btn-download:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
   .btn-download svg { width:16px; height:16px; fill:currentColor; }
+
+  /* Context / Example section */
+  .context-section {
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:28px 32px; margin-bottom:32px; box-shadow:0 1px 3px rgba(22,16,33,.06);
+  }
+  .context-section h2 {
+    font-size:17px; font-weight:700; margin-bottom:16px; color:var(--text);
+    border-bottom:1px solid var(--border); padding-bottom:10px;
+  }
+  .context-section p { font-size:14px; color:var(--muted); margin-bottom:12px; line-height:1.7; }
+  .context-section p strong { color:var(--text); }
+  .example-card {
+    background:var(--neutral-100); border:1px solid var(--border); border-radius:10px;
+    padding:20px 24px; margin:12px 0; position:relative;
+  }
+  .example-card .ex-label {
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;
+    color:var(--accent); margin-bottom:10px;
+  }
+  .example-card .timeline {
+    display:flex; align-items:stretch; gap:0; margin:12px 0;
+  }
+  .timeline-step {
+    flex:1; text-align:center; padding:12px 8px; position:relative;
+    border-top:3px solid var(--neutral-300);
+  }
+  .timeline-step.active { border-top-color:var(--accent); }
+  .timeline-step.green { border-top-color:var(--green); }
+  .timeline-step.amber { border-top-color:var(--amber); }
+  .timeline-step::before {
+    content:''; position:absolute; top:-7px; left:50%; transform:translateX(-50%);
+    width:10px; height:10px; border-radius:50%; background:var(--neutral-300); border:2px solid var(--card);
+  }
+  .timeline-step.active::before { background:var(--accent); }
+  .timeline-step.green::before { background:var(--green); }
+  .timeline-step.amber::before { background:var(--amber); }
+  .timeline-step .ts-label { font-size:11px; font-weight:600; color:var(--text); }
+  .timeline-step .ts-time { font-size:11px; color:var(--muted); margin-top:2px; }
+  .timeline-step .ts-detail { font-size:10px; color:var(--muted); margin-top:4px; font-style:italic; }
+  .timeline-connector {
+    position:absolute; top:-2px; left:0; right:0; height:3px;
+  }
+  .example-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:900px) { .example-grid { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -156,6 +201,80 @@
 <div class="header">
   <h1>Recharge Commission Issues - Are Devices Offline?</h1>
   <div class="subtitle">PTL Kapture Tickets | 20 Feb - 19 Mar 2026 | Kapture + Metabase Ping Data</div>
+</div>
+
+<!-- ==================== CONTEXT & EXAMPLES ==================== -->
+<div class="context-section">
+  <h2>How Recharge Commissions Work &mdash; Understanding the Flow</h2>
+  <p>
+    When a partner recharges a customer, the <strong>ISP ticket</strong> (which carries the commission) becomes visible at <strong>midnight (00:00) the next day</strong>. If the customer&rsquo;s device is <strong>offline</strong> (no pings), the recharge cannot process through the device &mdash; meaning no ISP ticket is generated, and the partner sees no commission. This is the root cause we are investigating.
+  </p>
+  <p>
+    Partners call PTL complaining about missing commissions. <strong>The question is: was the device even online when the recharge was supposed to happen?</strong>
+  </p>
+
+  <div class="example-grid">
+    <!-- Example 1 -->
+    <div class="example-card">
+      <div class="ex-label">Example 1 &mdash; Device ID: 48251 (28-day recharge cycle)</div>
+      <div class="timeline">
+        <div class="timeline-step active">
+          <div class="ts-label">Customer Recharge</div>
+          <div class="ts-time">13 Feb 2026, 17:00</div>
+          <div class="ts-detail">Partner recharges for 28 days</div>
+        </div>
+        <div class="timeline-step green">
+          <div class="ts-label">ISP Ticket Starts</div>
+          <div class="ts-time">14 Feb 2026, 00:00</div>
+          <div class="ts-detail">Commission becomes visible next midnight</div>
+        </div>
+        <div class="timeline-step" style="border-top-style:dashed">
+          <div class="ts-label" style="color:var(--muted)">28 days pass</div>
+          <div class="ts-time">&hellip;</div>
+          <div class="ts-detail">Customer uses internet</div>
+        </div>
+        <div class="timeline-step amber">
+          <div class="ts-label">Next Recharge</div>
+          <div class="ts-time">13 Mar 2026, 21:00</div>
+          <div class="ts-detail">Plan expires, partner recharges again</div>
+        </div>
+        <div class="timeline-step green">
+          <div class="ts-label">Next ISP Ticket</div>
+          <div class="ts-time">14 Mar 2026, 00:00</div>
+          <div class="ts-detail">New commission visible at midnight</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:8px 0 0">
+        <strong style="color:var(--text)">If the device was offline on 13 Mar</strong> &rarr; recharge doesn&rsquo;t go through &rarr; no ISP ticket on 14 Mar &rarr; partner calls complaining about missing commission.
+      </p>
+    </div>
+
+    <!-- Example 2 -->
+    <div class="example-card">
+      <div class="ex-label">Example 2 &mdash; Device ID: GX103595</div>
+      <div class="timeline">
+        <div class="timeline-step active">
+          <div class="ts-label">Customer Recharge</div>
+          <div class="ts-time">13 Feb 2026, 14:50</div>
+          <div class="ts-detail">Partner initiates recharge</div>
+        </div>
+        <div class="timeline-step green">
+          <div class="ts-label">ISP Ticket Starts</div>
+          <div class="ts-time">14 Feb 2026, 00:00</div>
+          <div class="ts-detail">Commission visible next midnight</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:8px 0 0">
+        <strong style="color:var(--text)">Same pattern:</strong> recharge at 14:50 &rarr; ISP ticket starts at midnight. The commission is tied to the ISP ticket, not the recharge time. If the device has <strong style="color:var(--red)">no ping</strong> at recharge time, the transaction fails silently.
+      </p>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;padding:14px 18px;background:rgba(217,0,141,.06);border-radius:8px;border-left:3px solid var(--accent)">
+    <p style="font-size:13px;color:var(--muted);margin:0;line-height:1.7">
+      <strong style="color:var(--text)">This report checks:</strong> For every recharge commission complaint call, was the customer&rsquo;s device actually pinging (online) at the time of the call? If not, the device was offline &mdash; the customer&rsquo;s internet was down &mdash; and the recharge could not have processed. The partner&rsquo;s complaint is about a symptom (no commission), but the root cause is <strong style="color:var(--red)">device connectivity failure</strong>.
+    </p>
+  </div>
 </div>
 
 <!-- ==================== DOWNLOAD BAR ==================== -->
